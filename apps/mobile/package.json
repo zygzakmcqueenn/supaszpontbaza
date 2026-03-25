@@ -1,0 +1,14 @@
+{
+  "name": "@party-hitz/mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor wrapper for the Party-Hitz mobile app",
+  "dependencies": {
+    "@capacitor/android": "latest",
+    "@capacitor/ios": "latest",
+    "@capacitor/core": "latest"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "latest"
+  }
+}

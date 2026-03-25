@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: party-hitz-server
+    env: node
+    rootDir: .
+    buildCommand: npm install && npm run build:server
+    startCommand: npm run start:server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
