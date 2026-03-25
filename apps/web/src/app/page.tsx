@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io, Socket } from 'socket.io-client';
 import type { GameState, Player } from '@party-hitz/shared';
+import ServerWakeUpScreen from '../components/ServerWakeUpScreen';
 
 let socket: Socket | null = null;
 
@@ -302,6 +303,10 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-24 relative overflow-hidden text-white">
+      <AnimatePresence>
+        {!isConnected && <ServerWakeUpScreen />}
+      </AnimatePresence>
+      
       {/* Tło gradientowe */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[600px] bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
 
