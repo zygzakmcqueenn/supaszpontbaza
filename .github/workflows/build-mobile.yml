@@ -71,8 +71,9 @@ jobs:
           npx cap sync ios
 
       - name: Build iOS App without Code Signing
-        working-directory: apps/mobile/ios/App
         run: |
+          cd apps/mobile/ios/App
+          pod install || true
           xcodebuild -workspace App.xcworkspace \
                      -scheme App \
                      -configuration Debug \
@@ -84,8 +85,8 @@ jobs:
                      build
 
       - name: Package to IPA
-        working-directory: apps/mobile/ios/App
         run: |
+          cd apps/mobile/ios/App
           mkdir -p Payload
           mv build/App.app Payload/
           zip -qr PartyHitz.ipa Payload
