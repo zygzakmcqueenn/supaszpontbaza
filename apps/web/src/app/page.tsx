@@ -358,36 +358,34 @@ export default function Home() {
       {/* Tło gradientowe */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[600px] bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
 
-      {/* Global Logo (visible outside home view) - Centered at the top */}
+      {/* Globalny Header (Logo + Home) */}
       <AnimatePresence>
         {view !== 'home' && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-[max(env(safe-area-inset-top,2rem),1.5rem)] left-0 right-0 z-40 flex flex-col items-center pointer-events-none"
+            className="absolute top-[max(env(safe-area-inset-top,2rem),1rem)] left-0 right-0 w-full flex items-center justify-between px-4 z-50 pointer-events-none"
           >
-            <h1 className="text-[2.8rem] sm:text-7xl font-black tracking-widest drop-shadow-md scale-y-125 origin-top text-white">
-              Party<span className="text-primary">Hitz</span>
-            </h1>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {/* Przycisk Home */}
+            <button
+              onClick={() => setShowExitModal(true)}
+              className="p-3 text-gray-400 hover:text-white transition-colors pointer-events-auto"
+            >
+              <svg className="w-8 h-8 md:w-10 md:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
 
-      {/* Przycisk Home w lewym górnym rogu */}
-      <AnimatePresence>
-        {view !== 'home' && (
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShowExitModal(true)}
-            className="absolute top-[max(env(safe-area-inset-top,2rem),1.5rem)] left-4 z-50 p-2 text-gray-400 hover:text-white transition-colors"
-          >
-            <svg className="w-8 h-8 md:w-10 md:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-            </svg>
-          </motion.button>
+            {/* Logo */}
+            <div className="flex-1 flex justify-center pointer-events-none">
+              <h1 className="text-[3rem] sm:text-7xl font-black tracking-tighter drop-shadow-md scale-y-110 text-white leading-none">
+                Party<span className="text-primary">Hitz</span>
+              </h1>
+            </div>
+
+            {/* Prawy przeciwciężar dla idealnego wyśrodkowania Flexboxa */}
+            <div className="w-14 h-14" />
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -608,7 +606,11 @@ export default function Home() {
         )}
 
         {view === 'playing' && gameState && (
-          <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 flex flex-col justify-center text-center w-full max-w-4xl h-full py-2 mt-8 sm:mt-0">
+          <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 flex flex-col justify-end text-center w-full max-w-4xl h-full pb-2 sm:pb-4 pt-24 sm:pt-32">
+            
+            {/* Opcjonalny odstęp zjadający nadmiar miejsca u góry */}
+            <div className="flex-1 min-h-0"></div>
+
             {/* Główne Przyciski Hosta (Play & Next) */}
             {(players.find(p => p.id === socket?.id)?.isHost || players.length === 1) && (
               <div className="flex justify-center items-center gap-4 mb-3 mt-1 h-14 shrink-0">
@@ -706,11 +708,32 @@ export default function Home() {
               })}
             </div>
 
+            {/* Action Button PRZENIESIONY WYŻEJ */}
+            <div className="mt-2 mb-2 flex justify-center shrink-0">
+              <button 
+                onClick={() => {
+                  if (answerAuthor.trim() !== '' || answerTitle.trim() !== '') {
+                    handleSubmitAnswer({ author: answerAuthor, title: answerTitle });
+                  } else {
+                    handleSubmitAnswer('SKIP');
+                  }
+                }}
+                disabled={!!(gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''])}
+                className={`font-black px-14 py-2 rounded-full h-14 sm:h-16 transition-all disabled:opacity-50 tracking-wider text-[13px] sm:text-base shadow-lg ${
+                  answerAuthor.trim() !== '' || answerTitle.trim() !== '' 
+                    ? 'bg-primary hover:bg-primaryHover text-black scale-105' 
+                    : 'bg-white hover:bg-gray-200 text-black'
+                }`}
+              >
+                {answerAuthor.trim() !== '' || answerTitle.trim() !== '' ? 'ZATWIERDŹ' : 'POMIŃ'}
+              </button>
+            </div>
+
             {/* Multiple Choice Options */}
-            <div className="flex flex-col gap-3 mt-1 w-full flex-1 min-h-0 justify-center">
+            <div className="flex flex-col gap-3 mt-1 w-full shrink-0 justify-end">
               {/* Autor */}
               <div className="flex flex-col w-full min-h-0">
-                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1.5 text-left shrink-0">Wykonawca</span>
+                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1 text-left shrink-0">Wykonawca</span>
                 <div className="grid grid-cols-2 gap-2 min-h-0">
                   {gameState.tracks[gameState.currentTrackIndex]?.artistOptions?.map((authorOpt, i) => (
                     <button
@@ -736,7 +759,7 @@ export default function Home() {
 
               {/* Tytuł */}
               <div className="flex flex-col w-full min-h-0">
-                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1.5 mt-2 text-left shrink-0">Tytuł utworu</span>
+                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1 mt-1 text-left shrink-0">Tytuł utworu</span>
                 <div className="grid grid-cols-2 gap-2 min-h-0">
                   {gameState.tracks[gameState.currentTrackIndex]?.titleOptions?.map((titleOpt, i) => (
                     <button
@@ -759,27 +782,6 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Action Button */}
-            <div className="mt-3 flex justify-center shrink-0">
-              <button 
-                onClick={() => {
-                  if (answerAuthor.trim() !== '' || answerTitle.trim() !== '') {
-                    handleSubmitAnswer({ author: answerAuthor, title: answerTitle });
-                  } else {
-                    handleSubmitAnswer('SKIP');
-                  }
-                }}
-                disabled={!!(gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''])}
-                className={`font-extrabold px-12 rounded-full h-12 sm:h-14 transition-colors disabled:opacity-50 tracking-wider text-[11px] sm:text-sm shadow-md ${
-                  answerAuthor.trim() !== '' || answerTitle.trim() !== '' 
-                    ? 'bg-primary hover:bg-primaryHover text-black' 
-                    : 'bg-white hover:bg-gray-200 text-black'
-                }`}
-              >
-                {answerAuthor.trim() !== '' || answerTitle.trim() !== '' ? 'ZATWIERDŹ' : 'POMIŃ'}
-              </button>
             </div>
             
             {gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''] && (

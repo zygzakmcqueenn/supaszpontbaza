@@ -550,6 +550,9 @@ video {
 .top-\[max\(env\(safe-area-inset-top\2c 2rem\)\2c 1\.5rem\)\] {
   top: max(env(safe-area-inset-top,2rem), 1.5rem);
 }
+.top-\[max\(env\(safe-area-inset-top\2c 2rem\)\2c 1rem\)\] {
+  top: max(env(safe-area-inset-top,2rem), 1rem);
+}
 .z-10 {
   z-index: 10;
 }
@@ -777,8 +780,17 @@ video {
   --tw-scale-y: 1.02;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
+.scale-105 {
+  --tw-scale-x: 1.05;
+  --tw-scale-y: 1.05;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
 .scale-y-125 {
   --tw-scale-y: 1.25;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+.scale-y-110 {
+  --tw-scale-y: 1.1;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 .transform {
@@ -804,6 +816,9 @@ video {
 }
 .items-center {
   align-items: center;
+}
+.justify-end {
+  justify-content: flex-end;
 }
 .justify-center {
   justify-content: center;
@@ -1110,8 +1125,18 @@ video {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
 }
+.px-14 {
+  padding-left: 3.5rem;
+  padding-right: 3.5rem;
+}
 .pl-4 {
   padding-left: 1rem;
+}
+.pb-2 {
+  padding-bottom: 0.5rem;
+}
+.pt-24 {
+  padding-top: 6rem;
 }
 .text-left {
   text-align: left;
@@ -1182,6 +1207,12 @@ video {
 }
 .text-\[2\.8rem\] {
   font-size: 2.8rem;
+}
+.text-\[13px\] {
+  font-size: 13px;
+}
+.text-\[3rem\] {
+  font-size: 3rem;
 }
 .font-black {
   font-weight: 900;
@@ -1553,6 +1584,14 @@ body {
     padding: 2rem;
   }
 
+  .sm\:pb-4 {
+    padding-bottom: 1rem;
+  }
+
+  .sm\:pt-32 {
+    padding-top: 8rem;
+  }
+
   .sm\:text-sm {
     font-size: 0.875rem;
     line-height: 1.25rem;
@@ -1566,6 +1605,11 @@ body {
   .sm\:text-7xl {
     font-size: 4.5rem;
     line-height: 1;
+  }
+
+  .sm\:text-base {
+    font-size: 1rem;
+    line-height: 1.5rem;
   }
 }
 
