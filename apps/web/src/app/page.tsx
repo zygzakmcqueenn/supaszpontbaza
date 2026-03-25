@@ -20,6 +20,8 @@ export default function Home() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [socketError, setSocketError] = useState('');
+  const [forceSkipWakeUp, setForceSkipWakeUp] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [hostError, setHostError] = useState('');
   const [countdown, setCountdown] = useState(3);
@@ -42,7 +44,15 @@ export default function Home() {
       socket = io(serverUrl);
     }
 
-    socket.on('connect', () => setIsConnected(true));
+    socket.on('connect', () => {
+      setIsConnected(true);
+      setSocketError('');
+    });
+    
+    socket.on('connect_error', (err: Error) => {
+      setSocketError(err.message);
+    });
+
     socket.on('disconnect', () => setIsConnected(false));
 
     socket.on('playersUpdated', (updatedPlayers: Player[]) => {
@@ -76,6 +86,7 @@ export default function Home() {
       socket?.off('gameStateUpdated');
       socket?.off('gameStarting');
       socket?.off('gameStartError');
+      socket?.off('connect_error');
     };
   }, []);
 
@@ -304,7 +315,12 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-24 relative overflow-hidden text-white">
       <AnimatePresence>
-        {!isConnected && <ServerWakeUpScreen />}
+        {(!isConnected && !forceSkipWakeUp) && (
+          <ServerWakeUpScreen 
+            errorMsg={socketError} 
+            onSkip={() => setForceSkipWakeUp(true)} 
+          />
+        )}
       </AnimatePresence>
       
       {/* Tło gradientowe */}
@@ -559,7 +575,7 @@ export default function Home() {
         {view === 'playing' && gameState && (
           <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 text-center w-full max-w-4xl">
             {/* Główne Przyciski Hosta (Play & Next) */}
-            {players.find(p => p.id === socket?.id)?.isHost && (
+            {(players.find(p => p.id === socket?.id)?.isHost || players.length === 1) && (
               <div className="flex justify-center items-center gap-8 mb-10 mt-4 h-24">
                 <button 
                   onClick={handlePlayTrack}
@@ -734,9 +750,9 @@ export default function Home() {
             {gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''] && (
               <p className="text-gray-400 mt-4 text-sm font-medium">
                 {gameState.roundReadyToAdvance 
-                  ? (players.find(p => p.id === socket?.id)?.isHost ? "Kliknij 'Następna Runda' aby zobaczyć wyniki!" : "Czekamy na Hosta...") 
+                  ? ((players.find(p => p.id === socket?.id)?.isHost || players.length === 1) ? "Kliknij 'Następna Runda' aby zobaczyć wyniki!" : "Czekamy na Hosta...") 
                   : (gameState.segmentReadyToAdvance 
-                    ? (players.find(p => p.id === socket?.id)?.isHost ? "Kliknij 'Następny Segment' aby grać dalej!" : "Czekamy na Hosta, aby rozpoczął kolejny segment...") 
+                    ? ((players.find(p => p.id === socket?.id)?.isHost || players.length === 1) ? "Kliknij 'Następny Segment' aby grać dalej!" : "Czekamy na Hosta, aby rozpoczął kolejny segment...") 
                     : "Czekanie na resztę graczy...")
                 }
               </p>
@@ -781,7 +797,7 @@ export default function Home() {
               </motion.div>
             )}
 
-            {players.find(p => p.id === socket?.id)?.isHost ? (
+            {(players.find(p => p.id === socket?.id)?.isHost || players.length === 1) ? (
               <div className="flex justify-center">
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
@@ -789,7 +805,7 @@ export default function Home() {
                   onClick={handleStartNextTrack}
                   className="font-bold py-5 px-12 bg-primary hover:bg-primaryHover text-black rounded-full text-2xl shadow-[0_0_30px_rgba(29,185,84,0.4)]"
                 >
-                  START KOLEJNEJ RUNDY
+                  START KOLEJNEJ ROUNDY
                 </motion.button>
               </div>
             ) : (

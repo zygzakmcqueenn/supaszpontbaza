@@ -5,14 +5,30 @@ import cors from 'cors';
 import { registerGameHandlers } from './sockets/gameHandler';
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = [
+  'http://localhost', 
+  'capacitor://localhost', 
+  'http://localhost:3000'
+];
+
+const corsOptions = {
+  origin: function(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://192.168.')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Fallback: tryb Beta dopuszcza dowolne klonowanie
+    }
+  },
+  methods: ["GET", "POST"],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*", 
-    methods: ["GET", "POST"]
-  }
+  cors: corsOptions
 });
 
 io.on('connection', (socket) => {

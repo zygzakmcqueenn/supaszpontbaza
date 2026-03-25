@@ -286,7 +286,7 @@ export const registerGameHandlers = (io: Server, socket: Socket) => {
 
     if (room && room.status === 'playing' && room.segmentReadyToAdvance && room.currentSegment) {
       const hostPlayer = room.players.find(p => p.id === socket.id);
-      if (hostPlayer && hostPlayer.isHost) {
+      if ((hostPlayer && hostPlayer.isHost) || room.players.length === 1) {
         room.segmentReadyToAdvance = false;
         
         if (room.currentSegment < 6) {
@@ -323,7 +323,7 @@ export const registerGameHandlers = (io: Server, socket: Socket) => {
 
     if (room && room.status === 'playing' && room.roundReadyToAdvance) {
       const hostPlayer = room.players.find(p => p.id === socket.id);
-      if (hostPlayer && hostPlayer.isHost) {
+      if ((hostPlayer && hostPlayer.isHost) || room.players.length === 1) {
         room.status = 'roundEnd';
         room.segmentReadyToAdvance = false;
         room.roundReadyToAdvance = false;
@@ -341,7 +341,7 @@ export const registerGameHandlers = (io: Server, socket: Socket) => {
 
     if (room && room.status === 'roundEnd') {
       const hostPlayer = room.players.find(p => p.id === socket.id);
-      if (hostPlayer && hostPlayer.isHost) {
+      if ((hostPlayer && hostPlayer.isHost) || room.players.length === 1) {
         
         // Zwiększ index utworu
         let nextIndex = room.currentTrackIndex + 1;
