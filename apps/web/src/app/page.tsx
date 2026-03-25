@@ -33,6 +33,7 @@ export default function Home() {
   const [showPointsAnimation, setShowPointsAnimation] = useState<{ points: number; id: string } | null>(null);
   const prevSegmentRef = useRef<number | undefined>(undefined);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playedSegments, setPlayedSegments] = useState<number[]>([]);
   
@@ -284,12 +285,17 @@ export default function Home() {
 
   const handlePlayTrack = () => {
     if (!audioRef.current || !gameState?.currentSegment) return;
+    const audio = audioRef.current;
     
-    // Zapobiegamy wielokrotnemu klikaniu w trakcie odtwarzania
-    if (isPlayingAudio) return;
+    // Funkcjonalność Play / Stop
+    if (isPlayingAudio) {
+      audio.pause();
+      setIsPlayingAudio(false);
+      if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
+      return;
+    }
     
     setIsPlayingAudio(true);
-    const audio = audioRef.current;
     
     // Tabela milisekund odpowiadająca segmentom: 0.5s, 1s, 2s, 4s, 8s, 16s
     const segmentDurations = [500, 1000, 2000, 4000, 8000, 16000];
@@ -323,7 +329,8 @@ export default function Home() {
     audio.currentTime = startTimeMs / 1000;
     audio.play().catch(e => console.error("Error playing audio:", e));
     
-    setTimeout(() => {
+    if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
+    playTimeoutRef.current = setTimeout(() => {
       audio.pause();
       setIsPlayingAudio(false);
     }, durationMs);
@@ -378,7 +385,7 @@ export default function Home() {
 
             {/* Logo */}
             <div className="flex-1 flex justify-center pointer-events-none">
-              <h1 className="text-[3rem] sm:text-7xl font-black tracking-tighter drop-shadow-md scale-y-110 text-white leading-none">
+              <h1 className="text-[3.5rem] sm:text-8xl font-black tracking-tighter drop-shadow-md scale-y-[1.15] text-white leading-none">
                 Party<span className="text-primary">Hitz</span>
               </h1>
             </div>
@@ -606,38 +613,43 @@ export default function Home() {
         )}
 
         {view === 'playing' && gameState && (
-          <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 flex flex-col justify-end text-center w-full max-w-4xl h-full pb-2 sm:pb-4 pt-24 sm:pt-32">
+          <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 flex flex-col justify-end text-center w-full max-w-4xl h-full pb-8 sm:pb-12 pt-24 sm:pt-32">
             
-            {/* Opcjonalny odstęp zjadający nadmiar miejsca u góry */}
-            <div className="flex-1 min-h-0"></div>
-
-            {/* Główne Przyciski Hosta (Play & Next) */}
-            {(players.find(p => p.id === socket?.id)?.isHost || players.length === 1) && (
-              <div className="flex justify-center items-center gap-4 mb-3 mt-1 h-14 shrink-0">
-                <button 
-                  onClick={handlePlayTrack}
-                  disabled={isPlayingAudio}
-                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(29,185,84,0.3)] ${isPlayingAudio ? 'bg-gray-500 scale-95' : 'bg-[#1DB954] hover:scale-105'}`}
-                >
-                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-black fill-current ml-1 sm:ml-2" viewBox="0 0 24 24">
-                    <path d="M5 3l14 9-14 9z"/>
-                  </svg>
-                </button>
-                
-                {(gameState.segmentReadyToAdvance || gameState.roundReadyToAdvance) && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={gameState.roundReadyToAdvance ? handleNextRound : handleNextSegment}
-                    className="h-10 sm:h-12 px-6 bg-white text-black font-extrabold rounded-full shadow-[0_0_20px_rgba(255,255,255,0.4)] tracking-wide text-xs sm:text-sm"
+            {/* Opcjonalny odstęp zjadający nadmiar miejsca u góry - TERAZ TRZYMA PRZYCISK PLAY! */}
+            <div className="flex-1 min-h-0 flex flex-col justify-center items-center">
+              {/* Główne Przyciski Hosta (Play & Next) */}
+              {(players.find(p => p.id === socket?.id)?.isHost || players.length === 1) && (
+                <div className="flex justify-center items-center gap-4 sm:gap-8 w-full mt-2 mb-2">
+                  <button 
+                    onClick={handlePlayTrack}
+                    className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(29,185,84,0.4)] ${isPlayingAudio ? 'bg-[#1DB954] scale-95' : 'bg-[#1DB954] hover:scale-105'}`}
                   >
-                    {gameState.roundReadyToAdvance ? "NASTĘPNA RUNDA" : "NASTĘPNY SEGMENT"}
-                  </motion.button>
-                )}
-              </div>
-            )}
+                    {isPlayingAudio ? (
+                      <svg className="w-10 h-10 sm:w-12 sm:h-12 text-black fill-current" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                      </svg>
+                    ) : (
+                      <svg className="w-10 h-10 sm:w-12 sm:h-12 text-black fill-current ml-2" viewBox="0 0 24 24">
+                        <path d="M5 3l14 9-14 9z"/>
+                      </svg>
+                    )}
+                  </button>
+                  
+                  {(gameState.segmentReadyToAdvance || gameState.roundReadyToAdvance) && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={gameState.roundReadyToAdvance ? handleNextRound : handleNextSegment}
+                      className="absolute right-4 sm:relative sm:right-auto h-10 sm:h-14 px-4 sm:px-8 bg-white text-black font-extrabold rounded-full shadow-[0_0_20px_rgba(255,255,255,0.4)] tracking-wide text-xs sm:text-base max-w-[120px] sm:max-w-none"
+                    >
+                      {gameState.roundReadyToAdvance ? "NASTĘPNA RUNDA" : "NASTĘPNY SEGMENT"}
+                    </motion.button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Progress Bar i Czas */}
             <div className="flex gap-1 mb-4 items-end h-6 shrink-0">
