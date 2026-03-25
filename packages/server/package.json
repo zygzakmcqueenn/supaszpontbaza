@@ -9,18 +9,18 @@
   },
   "dependencies": {
     "@party-hitz/shared": "*",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.25",
     "axios": "^1.13.6",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.18.2",
     "socket.io": "^4.7.4",
     "spotify-uri": "^4.1.0",
-    "spotify-url-info": "^3.3.0"
+    "spotify-url-info": "^3.3.0",
+    "typescript": "^5.0.0"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.25",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.0.0"
+    "ts-node-dev": "^2.0.0"
   }
 }
