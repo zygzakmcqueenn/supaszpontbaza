@@ -132,6 +132,13 @@ export default function Home() {
     if (e) e.preventDefault();
     if (!socket || !isConnected) return;
     setIsLoading(true);
+
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+      }
+    } catch(e) {}
+    
     socket.emit('createRoom', { hostName: inputName.trim() || 'Host' }, (res: { success: boolean, gameState: GameState }) => {
       if (res.success) {
         setRoomCode(res.gameState.roomId);
@@ -149,6 +156,12 @@ export default function Home() {
     setErrorMsg('');
     setIsLoading(true);
 
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+      }
+    } catch(e) {}
+    
     socket.emit('joinRoom', { roomId: inputCode, playerName: inputName }, (res: { success: boolean, message?: string, gameState?: GameState }) => {
       if (res.success && res.gameState) {
         setRoomCode(res.gameState.roomId);
@@ -166,6 +179,11 @@ export default function Home() {
     if (!socket) return;
     setHostError('');
     socket.emit('startGame', { roomId: roomCode, playlistUrl });
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+      }
+    } catch(e) {}
   };
 
   const handleStartSoloGame = (e: React.FormEvent) => {
@@ -173,6 +191,12 @@ export default function Home() {
     if (!socket || !isConnected || playlistUrl.trim() === '') return;
     setIsLoading(true);
     setHostError('');
+    
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+      }
+    } catch(e) {}
 
     socket.emit('createRoom', { hostName: 'Gracz (Solo)' }, (res: { success: boolean, gameState: GameState, message?: string }) => {
       if (res.success && res.gameState) {
@@ -340,9 +364,9 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center z-50 pointer-events-auto mb-12"
+            className="absolute top-[max(env(safe-area-inset-top,2rem),1.5rem)] left-0 right-0 z-40 flex flex-col items-center pointer-events-none"
           >
-            <h1 className="text-6xl md:text-8xl font-black tracking-tighter drop-shadow-lg">
+            <h1 className="text-[2.8rem] sm:text-7xl font-black tracking-widest drop-shadow-md scale-y-125 origin-top text-white">
               Party<span className="text-primary">Hitz</span>
             </h1>
           </motion.div>
@@ -358,10 +382,10 @@ export default function Home() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowExitModal(true)}
-            className="absolute top-8 left-8 z-50 bg-surface/50 p-3 rounded-full hover:bg-surface border border-gray-700 transition-colors"
+            className="absolute top-[max(env(safe-area-inset-top,2rem),1.5rem)] left-4 z-50 p-2 text-gray-400 hover:text-white transition-colors"
           >
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <svg className="w-8 h-8 md:w-10 md:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
             </svg>
           </motion.button>
         )}
@@ -584,7 +608,7 @@ export default function Home() {
         )}
 
         {view === 'playing' && gameState && (
-          <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 flex flex-col justify-center text-center w-full max-w-4xl h-full py-2">
+          <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 flex flex-col justify-center text-center w-full max-w-4xl h-full py-2 mt-8 sm:mt-0">
             {/* Główne Przyciski Hosta (Play & Next) */}
             {(players.find(p => p.id === socket?.id)?.isHost || players.length === 1) && (
               <div className="flex justify-center items-center gap-4 mb-3 mt-1 h-14 shrink-0">
