@@ -53,7 +53,10 @@ export default function Home() {
       setSocketError(err.message);
     });
 
-    socket.on('disconnect', () => setIsConnected(false));
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+      setIsLoading(false);
+    });
 
     socket.on('playersUpdated', (updatedPlayers: Player[]) => {
       setPlayers(updatedPlayers);
@@ -72,11 +75,16 @@ export default function Home() {
     socket.on('gameStarting', (state: GameState) => {
       setGameState(state);
       setView('countdown');
+      setIsLoading(false);
     });
 
     socket.on('gameStartError', (data: { message: string }) => {
       setHostError(data.message);
-      setView('hostLobby');
+      setIsLoading(false);
+      // Jeśli grał solo nie chcemy wyrzucać go do lobby
+      if (players.length > 1) {
+        setView('hostLobby');
+      }
     });
 
     return () => {
@@ -313,7 +321,7 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-24 relative overflow-hidden text-white">
+    <main className="flex h-[100dvh] w-full flex-col items-center justify-center p-3 sm:p-8 relative overflow-hidden text-white">
       <AnimatePresence>
         {(!isConnected && !forceSkipWakeUp) && (
           <ServerWakeUpScreen 
@@ -391,12 +399,15 @@ export default function Home() {
                 </button>
                 <button 
                   onClick={() => {
-                    setShowExitModal(false);
                     setView('home');
-                    if (socket) {
-                      socket.disconnect();
-                      socket.connect(); // Reconnect for a clean slate if needed
-                    }
+                    setRoomCode('');
+                    setGameState(null);
+                    setPlayers([]);
+                    setPlaylistUrl('');
+                    setIsLoading(false);
+                    setHostError('');
+                    socket?.emit('leaveRoom');
+                    setShowExitModal(false);
                   }}
                   className="flex-1 py-4 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-full transition-colors"
                 >
@@ -573,16 +584,16 @@ export default function Home() {
         )}
 
         {view === 'playing' && gameState && (
-          <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 text-center w-full max-w-4xl">
+          <motion.div key="playing" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="z-10 flex flex-col justify-center text-center w-full max-w-4xl h-full py-2">
             {/* Główne Przyciski Hosta (Play & Next) */}
             {(players.find(p => p.id === socket?.id)?.isHost || players.length === 1) && (
-              <div className="flex justify-center items-center gap-8 mb-10 mt-4 h-24">
+              <div className="flex justify-center items-center gap-4 mb-3 mt-1 h-14 shrink-0">
                 <button 
                   onClick={handlePlayTrack}
                   disabled={isPlayingAudio}
-                  className={`w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(29,185,84,0.3)] ${isPlayingAudio ? 'bg-gray-500 scale-95' : 'bg-[#1DB954] hover:scale-105'}`}
+                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(29,185,84,0.3)] ${isPlayingAudio ? 'bg-gray-500 scale-95' : 'bg-[#1DB954] hover:scale-105'}`}
                 >
-                  <svg className="w-10 h-10 text-black fill-current ml-2" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-black fill-current ml-1 sm:ml-2" viewBox="0 0 24 24">
                     <path d="M5 3l14 9-14 9z"/>
                   </svg>
                 </button>
@@ -594,7 +605,7 @@ export default function Home() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={gameState.roundReadyToAdvance ? handleNextRound : handleNextSegment}
-                    className="h-16 px-8 bg-white text-black font-extrabold rounded-full shadow-[0_0_20px_rgba(255,255,255,0.4)] tracking-wide"
+                    className="h-10 sm:h-12 px-6 bg-white text-black font-extrabold rounded-full shadow-[0_0_20px_rgba(255,255,255,0.4)] tracking-wide text-xs sm:text-sm"
                   >
                     {gameState.roundReadyToAdvance ? "NASTĘPNA RUNDA" : "NASTĘPNY SEGMENT"}
                   </motion.button>
@@ -603,7 +614,7 @@ export default function Home() {
             )}
 
             {/* Progress Bar i Czas */}
-            <div className="flex gap-2 mb-8 items-end h-8">
+            <div className="flex gap-1 mb-4 items-end h-6 shrink-0">
               {[1, 2, 3, 4, 5, 6].map((segment, index) => {
                 const flexGrows = [5, 10, 20, 40, 80, 160];
                 const segmentTimesStr = ['0.5s', '1s', '2s', '4s', '8s', '16s'];
@@ -622,7 +633,7 @@ export default function Home() {
             </div>
 
             {/* History Rows */}
-            <div className="flex flex-col gap-2 mb-8">
+            <div className="flex flex-col gap-1 mb-4 overflow-y-hidden shrink-0">
               {[1, 2, 3, 4, 5, 6].map((segment) => {
                 const isCurrent = gameState.currentSegment === segment;
                 const isPast = gameState.currentSegment ? segment < gameState.currentSegment : false;
@@ -652,7 +663,7 @@ export default function Home() {
                 }
 
                 return (
-                  <div key={segment} className={`h-[48px] border rounded flex items-center justify-between px-4 transition-colors ${
+                  <div key={segment} className={`h-[36px] sm:h-[40px] text-xs sm:text-sm border rounded flex items-center justify-between px-3 transition-colors ${
                     isCurrent ? 'border-primary shadow-[0_0_10px_rgba(29,185,84,0.2)] bg-transparent' 
                     : isPast && gameState.segmentResponses && gameState.segmentResponses[segment] && gameState.segmentResponses[segment][socket?.id || ''] ? 
                       (isBlankPlaceholder ? 'bg-[#282828] border-transparent' : (isSkipped ? 'bg-[#3E3E3E] border-[#2A2A2A]' : (pointsGained > 0 ? 'bg-primary/20 border-primary' : 'bg-red-500/20 border-red-500')))
@@ -672,17 +683,17 @@ export default function Home() {
             </div>
 
             {/* Multiple Choice Options */}
-            <div className="flex flex-col gap-8 mt-8 w-full">
+            <div className="flex flex-col gap-3 mt-1 w-full flex-1 min-h-0 justify-center">
               {/* Autor */}
-              <div className="flex flex-col w-full">
-                <span className="text-gray-400 font-bold uppercase tracking-widest text-xs mb-3 text-left">Wykonawca</span>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col w-full min-h-0">
+                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1.5 text-left shrink-0">Wykonawca</span>
+                <div className="grid grid-cols-2 gap-2 min-h-0">
                   {gameState.tracks[gameState.currentTrackIndex]?.artistOptions?.map((authorOpt, i) => (
                     <button
                       key={`author-${i}`}
                       onClick={() => setAnswerAuthor(authorOpt)}
                       disabled={alreadyGuessedAuthor || hasSubmittedThisSegment}
-                      className={`p-4 rounded-[1.5rem] font-bold text-sm min-h-[4rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
+                      className={`p-2 rounded-[1rem] font-bold text-xs sm:text-sm min-h-[3rem] sm:min-h-[3.5rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
                         alreadyGuessedAuthor ? (authorOpt === guessedAuthorText ? 'bg-primary text-black border-primary' : 'bg-[#181818] text-gray-700 border-transparent')
                         : hasSubmittedThisSegment ? (
                           currentSegmentAuthorCorrect && authorOpt === currentSegmentAuthorSubmitted ? 'bg-primary text-black border-primary'
@@ -700,15 +711,15 @@ export default function Home() {
               </div>
 
               {/* Tytuł */}
-              <div className="flex flex-col w-full">
-                <span className="text-gray-400 font-bold uppercase tracking-widest text-xs mb-3 text-left">Tytuł utworu</span>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col w-full min-h-0">
+                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1.5 mt-2 text-left shrink-0">Tytuł utworu</span>
+                <div className="grid grid-cols-2 gap-2 min-h-0">
                   {gameState.tracks[gameState.currentTrackIndex]?.titleOptions?.map((titleOpt, i) => (
                     <button
                       key={`title-${i}`}
                       onClick={() => setAnswerTitle(titleOpt)}
                       disabled={alreadyGuessedTitle || hasSubmittedThisSegment}
-                      className={`p-4 rounded-[1.5rem] font-bold text-sm min-h-[4rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
+                      className={`p-2 rounded-[1rem] font-bold text-xs sm:text-sm min-h-[3rem] sm:min-h-[3.5rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
                         alreadyGuessedTitle ? (titleOpt === guessedTitleText ? 'bg-primary text-black border-primary' : 'bg-[#181818] text-gray-700 border-transparent')
                         : hasSubmittedThisSegment ? (
                           currentSegmentTitleCorrect && titleOpt === currentSegmentTitleSubmitted ? 'bg-primary text-black border-primary'
@@ -727,7 +738,7 @@ export default function Home() {
             </div>
 
             {/* Action Button */}
-            <div className="mt-8 flex justify-center">
+            <div className="mt-3 flex justify-center shrink-0">
               <button 
                 onClick={() => {
                   if (answerAuthor.trim() !== '' || answerTitle.trim() !== '') {
@@ -737,7 +748,7 @@ export default function Home() {
                   }
                 }}
                 disabled={!!(gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''])}
-                className={`font-extrabold px-12 rounded-full h-14 transition-colors disabled:opacity-50 tracking-wider text-sm shadow-md ${
+                className={`font-extrabold px-12 rounded-full h-12 sm:h-14 transition-colors disabled:opacity-50 tracking-wider text-[11px] sm:text-sm shadow-md ${
                   answerAuthor.trim() !== '' || answerTitle.trim() !== '' 
                     ? 'bg-primary hover:bg-primaryHover text-black' 
                     : 'bg-white hover:bg-gray-200 text-black'
@@ -748,7 +759,7 @@ export default function Home() {
             </div>
             
             {gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''] && (
-              <p className="text-gray-400 mt-4 text-sm font-medium">
+              <p className="text-gray-400 mt-2 text-[10px] sm:text-xs font-medium">
                 {gameState.roundReadyToAdvance 
                   ? ((players.find(p => p.id === socket?.id)?.isHost || players.length === 1) ? "Kliknij 'Następna Runda' aby zobaczyć wyniki!" : "Czekamy na Hosta...") 
                   : (gameState.segmentReadyToAdvance 
@@ -761,7 +772,7 @@ export default function Home() {
         )}
 
         {view === 'roundEnd' && gameState && (
-          <motion.div key="roundEnd" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="z-10 w-full max-w-2xl bg-surface border border-gray-800 rounded-3xl p-8 shadow-2xl">
+          <motion.div key="roundEnd" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="z-10 w-full max-h-[90dvh] overflow-y-auto max-w-2xl bg-surface border border-gray-800 rounded-3xl p-8 shadow-2xl custom-scrollbar">
             <h2 className="text-4xl font-black text-center mb-8 text-white uppercase tracking-wider">Wyniki Rundy</h2>
             
             <div className="flex flex-col gap-4 mb-10">
