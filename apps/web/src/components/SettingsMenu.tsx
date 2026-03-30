@@ -27,12 +27,14 @@ export default function SettingsMenu({ onClose }: SettingsMenuProps) {
     const newVal = !hapticsEnabled;
     setHapticsEnabled(newVal);
     await Preferences.set({ key: 'haptic_fx_enabled', value: newVal.toString() });
+    window.dispatchEvent(new Event('preferences_changed'));
   };
 
   const toggleAudio = async () => {
     const newVal = !audioEnabled;
     setAudioEnabled(newVal);
     await Preferences.set({ key: 'audio_fx_enabled', value: newVal.toString() });
+    window.dispatchEvent(new Event('preferences_changed'));
   };
 
   return (

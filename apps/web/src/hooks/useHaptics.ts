@@ -1,22 +1,32 @@
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Preferences } from '@capacitor/preferences';
+import { useEffect, useRef } from 'react';
 
 export const useHaptics = () => {
-  const lightImpact = async () => {
+  const isEnabled = useRef(true);
+
+  useEffect(() => {
+    const loadSettings = () => {
+      Preferences.get({ key: 'haptic_fx_enabled' }).then(({ value }) => {
+        isEnabled.current = value !== 'false';
+      }).catch(() => {});
+    };
+    loadSettings();
+    window.addEventListener('preferences_changed', loadSettings);
+    return () => window.removeEventListener('preferences_changed', loadSettings);
+  }, []);
+
+  const lightImpact = () => {
+    if (!isEnabled.current) return;
     try {
-      const pref = await Preferences.get({ key: 'haptic_fx_enabled' });
-      if (pref.value === 'false') return;
-      await Haptics.impact({ style: ImpactStyle.Light });
-    } catch (error) {
-      // Zignoruj błędy jeśli wibracje na PC nie działają
-    }
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    } catch (error) {}
   };
 
-  const heavyImpact = async () => {
+  const heavyImpact = () => {
+    if (!isEnabled.current) return;
     try {
-      const pref = await Preferences.get({ key: 'haptic_fx_enabled' });
-      if (pref.value === 'false') return;
-      await Haptics.impact({ style: ImpactStyle.Heavy });
+      Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
     } catch (error) {}
   };
 
