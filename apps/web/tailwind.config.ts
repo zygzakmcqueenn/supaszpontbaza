@@ -9,8 +9,8 @@ const config: Config = {
       colors: {
         background: "#121212", 
         surface: "#181818",    
-        primary: "#FF1493",    
-        primaryHover: "#FF69B4", 
+        primary: "#1DB954",    
+        primaryHover: "#1ed760", 
       },
       fontFamily: {
         sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
