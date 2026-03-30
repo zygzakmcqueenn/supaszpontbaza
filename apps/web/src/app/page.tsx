@@ -30,6 +30,33 @@ export default function Home() {
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [playlistSource, setPlaylistSource] = useState<'spotify' | 'youtube'>('spotify');
   const [answerAuthor, setAnswerAuthor] = useState('');
+  const [ytPlayer, setYtPlayer] = useState<any>(null);
+
+  useEffect(() => {
+    if (!document.getElementById('youtube-iframe-api')) {
+      const tag = document.createElement('script');
+      tag.id = 'youtube-iframe-api';
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      if (firstScriptTag && firstScriptTag.parentNode) {
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      }
+    }
+    (window as any).onYouTubeIframeAPIReady = () => {
+      const player = new (window as any).YT.Player('yt-player-hidden', {
+        height: '0',
+        width: '0',
+        videoId: '',
+        playerVars: { autoplay: 0, controls: 0, disablekb: 1 },
+        events: {
+          onReady: (event: any) => setYtPlayer(event.target),
+          onStateChange: (event: any) => {
+            if (event.data === (window as any).YT.PlayerState.ENDED) setIsPlayingAudio(false);
+          }
+        }
+      });
+    };
+  }, []);
   const [answerTitle, setAnswerTitle] = useState('');
   const [showPointsAnimation, setShowPointsAnimation] = useState<{ points: number; id: string } | null>(null);
   const prevSegmentRef = useRef<number | undefined>(undefined);
@@ -132,7 +159,25 @@ export default function Home() {
   }, [gameState?.currentSegment, gameState?.segmentResponses]);
 
   useEffect(() => {
-    setGuessStep('author');
+    let localGuessedAuthor = false;
+    let localGuessedAuthorText = '';
+    if (gameState?.segmentResponses && gameState.currentSegment) {
+      for (let s = 1; s < gameState.currentSegment; s++) {
+        const myRes = gameState.segmentResponses[s]?.[socket?.id || ''];
+        if (myRes && myRes.isAuthorCorrect) { 
+           localGuessedAuthor = true; 
+           localGuessedAuthorText = myRes.author;
+        }
+      }
+    }
+    if (localGuessedAuthor) {
+      setGuessStep('title');
+      setAnswerAuthor(localGuessedAuthorText);
+    } else {
+      setGuessStep('author');
+      setAnswerAuthor('');
+    }
+    setAnswerTitle('');
   }, [gameState?.currentSegment, gameState?.currentTrackIndex]);
 
   const handleCreateParty = (e?: React.FormEvent) => {
@@ -171,6 +216,7 @@ export default function Home() {
     
     socket.emit('joinRoom', { roomId: inputCode, playerName: inputName }, (res: { success: boolean, message?: string, gameState?: GameState }) => {
       if (res.success && res.gameState) {
+        if (!isLoading) return; // Ignore if user cancelled
         setRoomCode(res.gameState.roomId);
         setPlayers(res.gameState.players);
         setGameState(res.gameState);
@@ -207,6 +253,7 @@ export default function Home() {
 
     socket.emit('createRoom', { hostName: 'Gracz (Solo)' }, (res: { success: boolean, gameState: GameState, message?: string }) => {
       if (res.success && res.gameState) {
+        if (!isLoading) return; // Prevent race conditions
         setRoomCode(res.gameState.roomId);
         setPlayers(res.gameState.players);
         setGameState(res.gameState);
@@ -290,20 +337,10 @@ export default function Home() {
   }, [gameState?.tracks, gameState?.currentTrackIndex]);
 
   const handlePlayTrack = () => {
-    if (!audioRef.current || !gameState?.currentSegment) return;
-    const audio = audioRef.current;
+    if (!gameState?.currentSegment) return;
+    const currentTrack = gameState.tracks?.[gameState.currentTrackIndex || 0];
+    if (!currentTrack) return;
     
-    // Funkcjonalność Play / Stop
-    if (isPlayingAudio) {
-      audio.pause();
-      setIsPlayingAudio(false);
-      if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
-      return;
-    }
-    
-    setIsPlayingAudio(true);
-    
-    // Tabela milisekund odpowiadająca segmentom: 0.5s, 1s, 2s, 4s, 8s, 16s
     const segmentDurations = [500, 1000, 2000, 4000, 8000, 16000];
     const segIndex = Math.min(gameState.currentSegment - 1, 5);
     
@@ -321,17 +358,50 @@ export default function Home() {
     let durationMs = 0;
 
     if (isFirstPlayInSegment && segIndex > 0) {
-      // 1. Pierwsze odtworzenie 2+ segmentu: gramy "od końca pierwszego do + X sekund"
-      // Startuje tam gdzie skończył się poprzedni segment, i gra TYLKO czas z obecnego.
       startTimeMs = accumulatedMs;
       durationMs = segmentDurations[segIndex];
     } else {
-      // 2. Pierwszy segment, LUB drugie i kolejne puszczenie tego samego segmentu: leci od nowa (00:00)
-      // Odtwarza całkowity skumulowany czas piosenki (Suma poprzednich + ten segment)
       startTimeMs = 0;
       durationMs = accumulatedMs + segmentDurations[segIndex];
     }
+
+    // Odtwarzanie YouTube
+    if (currentTrack.source === 'youtube' && ytPlayer) {
+      if (isPlayingAudio) {
+        ytPlayer.pauseVideo();
+        setIsPlayingAudio(false);
+        if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
+        return;
+      }
+      setIsPlayingAudio(true);
+      const videoData = ytPlayer.getVideoData ? ytPlayer.getVideoData() : null;
+      if (!videoData || videoData.video_id !== currentTrack.youtubeId) {
+         ytPlayer.loadVideoById({ videoId: currentTrack.youtubeId, startSeconds: startTimeMs / 1000 });
+      } else {
+         ytPlayer.seekTo(startTimeMs / 1000, true);
+         ytPlayer.playVideo();
+      }
+      
+      if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
+      playTimeoutRef.current = setTimeout(() => {
+        ytPlayer.pauseVideo();
+        setIsPlayingAudio(false);
+      }, durationMs);
+      return;
+    }
+
+    // Odtwarzanie darmowych 30-sekundowych probek MP3 ze Spotify
+    if (!audioRef.current || !currentTrack.previewUrl) return;
+    const audio = audioRef.current;
     
+    if (isPlayingAudio) {
+      audio.pause();
+      setIsPlayingAudio(false);
+      if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
+      return;
+    }
+    
+    setIsPlayingAudio(true);
     audio.currentTime = startTimeMs / 1000;
     audio.play().catch(e => console.error("Error playing audio:", e));
     
@@ -367,6 +437,7 @@ export default function Home() {
 
   return (
     <main className="flex h-[100dvh] w-full flex-col items-center justify-center p-3 sm:p-8 relative overflow-hidden text-white">
+      <div id="yt-player-hidden" className="hidden"></div>
       <AnimatePresence>
         {(!isConnected && !forceSkipWakeUp) && (
           <ServerWakeUpScreen 
@@ -389,7 +460,13 @@ export default function Home() {
           >
             {/* Przycisk Home */}
             <button
-              onClick={() => setShowExitModal(true)}
+              onClick={() => {
+                if (isLoading) {
+                  window.location.reload();
+                } else {
+                  setShowExitModal(true);
+                }
+              }}
               className="p-3 text-gray-400 hover:text-white transition-colors pointer-events-auto"
             >
               <svg className="w-[1.8rem] h-[1.8rem] md:w-9 md:h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -505,15 +582,17 @@ export default function Home() {
                 />
                 <button 
                   type="button" 
+                  disabled={isLoading}
                   onClick={() => setPlaylistSource('spotify')} 
-                  className={`w-1/2 py-3 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${isSpotify ? 'text-black' : 'text-gray-400 hover:text-white'}`}
+                  className={`w-1/2 py-3 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${isSpotify ? 'text-black' : 'text-gray-400 hover:text-white'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   Spotify
                 </button>
                 <button 
                   type="button" 
+                  disabled={isLoading}
                   onClick={() => setPlaylistSource('youtube')} 
-                  className={`w-1/2 py-3 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${!isSpotify ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                  className={`w-1/2 py-3 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${!isSpotify ? 'text-white' : 'text-gray-400 hover:text-white'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   YouTube
                 </button>
@@ -521,7 +600,7 @@ export default function Home() {
 
               <div>
                 <label className="text-gray-400 text-sm mb-2 block font-medium pl-4">Zagraj własną playlistę</label>
-                <input type="url" value={playlistUrl} onChange={(e) => setPlaylistUrl(e.target.value)} className={`w-full bg-background border border-gray-700/50 rounded-[1.5rem] px-6 py-4 text-base text-white focus:outline-none focus:ring-2 transition-all text-center ${themeFocusRingClass}`} placeholder={isSpotify ? "Skrót linku playlisty ze Spotify" : "Link do publicznej playlisty YouTube"} required />
+                <input disabled={isLoading} type="url" value={playlistUrl} onChange={(e) => setPlaylistUrl(e.target.value)} className={`w-full bg-background border border-gray-700/50 rounded-[1.5rem] px-6 py-4 text-base text-white focus:outline-none focus:ring-2 transition-all text-center ${themeFocusRingClass} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder={isSpotify ? "Skrót linku playlisty ze Spotify" : "Link do publicznej playlisty YouTube"} required />
               </div>
               
               {hostError && <p className="text-red-500 text-sm text-center font-bold px-2">{hostError}</p>}
@@ -529,7 +608,10 @@ export default function Home() {
               <button type="submit" disabled={isLoading || playlistUrl.trim() === ''} className={`font-bold py-5 rounded-[1.5rem] text-lg mt-4 transition-all duration-300 w-full border-2 ${playlistUrl.trim() !== '' ? `${themeBgClass} ${themeBorderClass} ${themeHoverBgClass} ${themeShadowClass} text-${isSpotify?'black':'white'} hover:scale-105` : 'bg-[#181818] border-gray-800 text-gray-600 shadow-none cursor-not-allowed'}`}>
                 {isLoading ? 'Ładowanie playlisty...' : 'Rozpocznij Grę'}
               </button>
-              <button type="button" onClick={() => setView('home')} className="text-gray-400 hover:text-white py-2 text-sm mt-4 transition-colors">Wróć</button>
+              <button type="button" onClick={() => {
+                if (isLoading) { window.location.reload(); }
+                else { setView('home'); }
+              }} className="text-gray-400 hover:text-white py-2 text-sm mt-4 transition-colors">Wróć</button>
             </form>
           </motion.div>
         )}
@@ -567,15 +649,17 @@ export default function Home() {
                 />
                 <button 
                   type="button" 
+                  disabled={isLoading}
                   onClick={() => setPlaylistSource('spotify')} 
-                  className={`w-1/2 py-2 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${isSpotify ? 'text-black' : 'text-gray-400 hover:text-white'}`}
+                  className={`w-1/2 py-2 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${isSpotify ? 'text-black' : 'text-gray-400 hover:text-white'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   Spotify
                 </button>
                 <button 
                   type="button" 
+                  disabled={isLoading}
                   onClick={() => setPlaylistSource('youtube')} 
-                  className={`w-1/2 py-2 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${!isSpotify ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                  className={`w-1/2 py-2 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${!isSpotify ? 'text-white' : 'text-gray-400 hover:text-white'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   YouTube
                 </button>
@@ -584,9 +668,10 @@ export default function Home() {
               <h3 className={`text-xl ${themeTextClass} font-bold mb-4 pl-4 uppercase tracking-wider text-left transition-colors`}>Link do playlisty</h3>
               <input 
                 type="text" 
+                disabled={isLoading}
                 value={playlistUrl} 
                 onChange={(e) => setPlaylistUrl(e.target.value)} 
-                className={`w-full bg-background/80 border border-gray-700/50 rounded-full px-8 py-5 text-white focus:outline-none focus:ring-2 transition-all mb-8 shadow-inner ${themeFocusRingClass}`} 
+                className={`w-full bg-background/80 border border-gray-700/50 rounded-full px-8 py-5 text-white focus:outline-none focus:ring-2 transition-all mb-8 shadow-inner ${themeFocusRingClass} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} 
                 placeholder={isSpotify ? "https://open.spotify.com/playlist/..." : "Link do publicznej playlisty z YouTube (np. z ?list=...)"} 
               />
               <h3 className={`text-xl ${themeTextClass} font-bold mb-4 pl-4 uppercase tracking-wider text-left transition-colors`}>Podłączeni gracze ({players.filter(p => !p.isHost).length}):</h3>
@@ -682,14 +767,14 @@ export default function Home() {
                 <div className="flex justify-center items-center gap-4 sm:gap-8 w-full mt-2 mb-2">
                   <button 
                     onClick={handlePlayTrack}
-                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(29,185,84,0.4)] ${isPlayingAudio ? 'bg-[#1DB954] scale-95' : 'bg-[#1DB954] hover:scale-105'}`}
+                    className={`w-[4.5rem] h-[4.5rem] sm:w-[5.5rem] sm:h-[5.5rem] rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(29,185,84,0.4)] ${isPlayingAudio ? 'bg-[#1DB954] scale-95' : 'bg-[#1DB954] hover:scale-105'}`}
                   >
                     {isPlayingAudio ? (
-                      <svg className="w-8 h-8 sm:w-10 sm:h-10 text-black fill-current" viewBox="0 0 24 24">
+                      <svg className="w-9 h-9 sm:w-11 sm:h-11 text-black fill-current" viewBox="0 0 24 24">
                         <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
                       </svg>
                     ) : (
-                      <svg className="w-8 h-8 sm:w-10 sm:h-10 text-black fill-current ml-2" viewBox="0 0 24 24">
+                      <svg className="w-9 h-9 sm:w-11 sm:h-11 text-black fill-current ml-2" viewBox="0 0 24 24">
                         <path d="M5 3l14 9-14 9z"/>
                       </svg>
                     )}
