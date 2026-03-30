@@ -36,6 +36,7 @@ export default function Home() {
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playedSegments, setPlayedSegments] = useState<number[]>([]);
+  const [guessStep, setGuessStep] = useState<'author' | 'title'>('author');
   
   const [showExitModal, setShowExitModal] = useState(false);
 
@@ -128,6 +129,10 @@ export default function Home() {
     }
     prevSegmentRef.current = gameState?.currentSegment;
   }, [gameState?.currentSegment, gameState?.segmentResponses]);
+
+  useEffect(() => {
+    setGuessStep('author');
+  }, [gameState?.currentSegment, gameState?.currentTrackIndex]);
 
   const handleCreateParty = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -371,7 +376,7 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-[max(env(safe-area-inset-top,2rem),1rem)] left-0 right-0 w-full flex items-center justify-between px-4 z-50 pointer-events-none"
+            className="absolute top-[max(env(safe-area-inset-top,3.5rem),2.5rem)] left-0 right-0 w-full flex items-center justify-between px-4 z-50 pointer-events-none"
           >
             {/* Przycisk Home */}
             <button
@@ -634,19 +639,6 @@ export default function Home() {
                       </svg>
                     )}
                   </button>
-                  
-                  {(gameState.segmentReadyToAdvance || gameState.roundReadyToAdvance) && (
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={gameState.roundReadyToAdvance ? handleNextRound : handleNextSegment}
-                      className="absolute right-4 sm:relative sm:right-auto h-10 sm:h-14 px-4 sm:px-8 bg-white text-black font-extrabold rounded-full shadow-[0_0_20px_rgba(255,255,255,0.4)] tracking-wide text-xs sm:text-base max-w-[120px] sm:max-w-none"
-                    >
-                      {gameState.roundReadyToAdvance ? "NASTĘPNA RUNDA" : "NASTĘPNY SEGMENT"}
-                    </motion.button>
-                  )}
                 </div>
               )}
             </div>
@@ -681,6 +673,8 @@ export default function Home() {
                 let isSkipped = false;
                 let pointsGained = 0;
                 let isBlankPlaceholder = false;
+                let isAuthorCorrect = false;
+                let isTitleCorrect = false;
                 
                 if (isPast && gameState.segmentResponses && gameState.segmentResponses[segment]) {
                    const myAnswer = gameState.segmentResponses[segment][socket?.id || ''];
@@ -696,6 +690,8 @@ export default function Home() {
                        const titStr = myAnswer.title || '???';
                        answerText = `${authStr} - ${titStr}`;
                        pointsGained = myAnswer.pointsAwarded;
+                       isAuthorCorrect = !!(myAnswer as any).isAuthorCorrect;
+                       isTitleCorrect = !!(myAnswer as any).isTitleCorrect;
                      }
                    }
                 }
@@ -704,7 +700,7 @@ export default function Home() {
                   <div key={segment} className={`h-[36px] sm:h-[40px] text-xs sm:text-sm border rounded flex items-center justify-between px-3 transition-colors ${
                     isCurrent ? 'border-primary shadow-[0_0_10px_rgba(29,185,84,0.2)] bg-transparent' 
                     : isPast && gameState.segmentResponses && gameState.segmentResponses[segment] && gameState.segmentResponses[segment][socket?.id || ''] ? 
-                      (isBlankPlaceholder ? 'bg-[#282828] border-transparent' : (isSkipped ? 'bg-[#3E3E3E] border-[#2A2A2A]' : (pointsGained > 0 ? 'bg-primary/20 border-primary' : 'bg-red-500/20 border-red-500')))
+                      (isBlankPlaceholder ? 'bg-[#282828] border-transparent' : (isSkipped ? 'bg-[#3E3E3E] border-[#2A2A2A]' : (isAuthorCorrect && isTitleCorrect ? 'bg-primary/20 border-primary' : (pointsGained > 0 ? 'bg-yellow-500/20 border-yellow-500' : 'bg-red-500/20 border-red-500'))))
                     : 'border-[#282828] bg-transparent'
                   }`}>
                     {answerText && (
@@ -731,7 +727,7 @@ export default function Home() {
                   }
                 }}
                 disabled={!!(gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''])}
-                className={`font-black px-14 py-2 rounded-full h-14 sm:h-16 transition-all disabled:opacity-50 tracking-wider text-[13px] sm:text-base shadow-lg ${
+                className={`font-black px-14 py-2 rounded-full h-14 sm:h-16 transition-all disabled:opacity-50 tracking-wider text-[13px] sm:text-base shadow-lg z-10 relative mt-4 ${
                   answerAuthor.trim() !== '' || answerTitle.trim() !== '' 
                     ? 'bg-primary hover:bg-primaryHover text-black scale-105' 
                     : 'bg-white hover:bg-gray-200 text-black'
@@ -742,58 +738,87 @@ export default function Home() {
             </div>
 
             {/* Multiple Choice Options */}
-            <div className="flex flex-col gap-3 mt-1 w-full shrink-0 justify-end">
-              {/* Autor */}
-              <div className="flex flex-col w-full min-h-0">
-                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1 text-left shrink-0">Wykonawca</span>
-                <div className="grid grid-cols-2 gap-2 min-h-0">
-                  {gameState.tracks[gameState.currentTrackIndex]?.artistOptions?.map((authorOpt, i) => (
-                    <button
-                      key={`author-${i}`}
-                      onClick={() => setAnswerAuthor(authorOpt)}
-                      disabled={alreadyGuessedAuthor || hasSubmittedThisSegment}
-                      className={`p-2 rounded-[1rem] font-bold text-xs sm:text-sm min-h-[3rem] sm:min-h-[3.5rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
-                        alreadyGuessedAuthor ? (authorOpt === guessedAuthorText ? 'bg-primary text-black border-primary' : 'bg-[#181818] text-gray-700 border-transparent')
-                        : hasSubmittedThisSegment ? (
-                          currentSegmentAuthorCorrect && authorOpt === currentSegmentAuthorSubmitted ? 'bg-primary text-black border-primary'
-                          : authorOpt === currentSegmentAuthorSubmitted ? 'bg-red-500/20 text-red-500 border-red-500' 
-                          : 'bg-[#181818] text-gray-700 border-transparent'
-                        )
-                        : answerAuthor === authorOpt ? 'bg-primary border-primary text-black transform scale-[1.02]' 
-                        : 'bg-[#282828] border-transparent hover:bg-[#383838] text-white hover:border-gray-500'
-                      } disabled:opacity-50`}
-                    >
-                      {authorOpt}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="relative w-full h-[180px] sm:h-[220px] mt-1 shrink-0 overflow-hidden">
+              <AnimatePresence initial={false}>
+                {guessStep === 'author' && (
+                  <motion.div 
+                    key="author"
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{ type: "tween", duration: 0.3 }}
+                    className="absolute inset-0 flex flex-col w-full"
+                  >
+                    <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1 text-left shrink-0">Wykonawca</span>
+                    <div className="grid grid-cols-2 gap-2 min-h-0 h-full pb-4">
+                      {gameState.tracks[gameState.currentTrackIndex]?.artistOptions?.map((authorOpt, i) => (
+                        <button
+                          key={`author-${i}`}
+                          onClick={() => {
+                            setAnswerAuthor(authorOpt);
+                            setGuessStep('title');
+                          }}
+                          disabled={alreadyGuessedAuthor || hasSubmittedThisSegment}
+                          className={`p-2 rounded-[1rem] font-bold text-xs sm:text-sm min-h-[3rem] sm:min-h-[3.5rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
+                            alreadyGuessedAuthor ? (authorOpt === guessedAuthorText ? 'bg-primary text-black border-primary' : 'bg-[#181818] text-gray-700 border-transparent')
+                            : hasSubmittedThisSegment ? (
+                              currentSegmentAuthorCorrect && authorOpt === currentSegmentAuthorSubmitted ? 'bg-primary text-black border-primary'
+                              : authorOpt === currentSegmentAuthorSubmitted ? 'bg-red-500/20 text-red-500 border-red-500' 
+                              : 'bg-[#181818] text-gray-700 border-transparent'
+                            )
+                            : answerAuthor === authorOpt ? 'bg-primary border-primary text-black transform scale-[1.02]' 
+                            : 'bg-[#282828] border-transparent hover:bg-[#383838] text-white hover:border-gray-500'
+                          } disabled:opacity-50`}
+                        >
+                          {authorOpt}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
 
-              {/* Tytuł */}
-              <div className="flex flex-col w-full min-h-0">
-                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1 mt-1 text-left shrink-0">Tytuł utworu</span>
-                <div className="grid grid-cols-2 gap-2 min-h-0">
-                  {gameState.tracks[gameState.currentTrackIndex]?.titleOptions?.map((titleOpt, i) => (
-                    <button
-                      key={`title-${i}`}
-                      onClick={() => setAnswerTitle(titleOpt)}
-                      disabled={alreadyGuessedTitle || hasSubmittedThisSegment}
-                      className={`p-2 rounded-[1rem] font-bold text-xs sm:text-sm min-h-[3rem] sm:min-h-[3.5rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
-                        alreadyGuessedTitle ? (titleOpt === guessedTitleText ? 'bg-primary text-black border-primary' : 'bg-[#181818] text-gray-700 border-transparent')
-                        : hasSubmittedThisSegment ? (
-                          currentSegmentTitleCorrect && titleOpt === currentSegmentTitleSubmitted ? 'bg-primary text-black border-primary'
-                          : titleOpt === currentSegmentTitleSubmitted ? 'bg-red-500/20 text-red-500 border-red-500' 
-                          : 'bg-[#181818] text-gray-700 border-transparent'
-                        )
-                        : answerTitle === titleOpt ? 'bg-primary border-primary text-black transform scale-[1.02]' 
-                        : 'bg-[#282828] border-transparent hover:bg-[#383838] text-white hover:border-gray-500'
-                      } disabled:opacity-50`}
-                    >
-                      {titleOpt}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                {guessStep === 'title' && (
+                  <motion.div
+                    key="title"
+                    initial={{ opacity: 0, x: 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 50 }}
+                    transition={{ type: "tween", duration: 0.3 }}
+                    className="absolute inset-0 flex flex-col w-full"
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px] text-left shrink-0">Tytuł utworu</span>
+                      <button 
+                        onClick={() => setGuessStep('author')}
+                        className="text-primary hover:text-primaryHover text-[10px] font-bold tracking-widest uppercase transition-colors"
+                      >
+                        ← Wróć do wykonawcy
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 min-h-0 h-full pb-4">
+                      {gameState.tracks[gameState.currentTrackIndex]?.titleOptions?.map((titleOpt, i) => (
+                        <button
+                          key={`title-${i}`}
+                          onClick={() => setAnswerTitle(titleOpt)}
+                          disabled={alreadyGuessedTitle || hasSubmittedThisSegment}
+                          className={`p-2 rounded-[1rem] font-bold text-xs sm:text-sm min-h-[3rem] sm:min-h-[3.5rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
+                            alreadyGuessedTitle ? (titleOpt === guessedTitleText ? 'bg-primary text-black border-primary' : 'bg-[#181818] text-gray-700 border-transparent')
+                            : hasSubmittedThisSegment ? (
+                              currentSegmentTitleCorrect && titleOpt === currentSegmentTitleSubmitted ? 'bg-primary text-black border-primary'
+                              : titleOpt === currentSegmentTitleSubmitted ? 'bg-red-500/20 text-red-500 border-red-500' 
+                              : 'bg-[#181818] text-gray-700 border-transparent'
+                            )
+                            : answerTitle === titleOpt ? 'bg-primary border-primary text-black transform scale-[1.02]' 
+                            : 'bg-[#282828] border-transparent hover:bg-[#383838] text-white hover:border-gray-500'
+                          } disabled:opacity-50`}
+                        >
+                          {titleOpt}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             
             {gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''] && (

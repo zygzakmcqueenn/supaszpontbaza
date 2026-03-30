@@ -2,6 +2,9 @@ name: Build Mobile Apps (Capacitor)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build-android:
