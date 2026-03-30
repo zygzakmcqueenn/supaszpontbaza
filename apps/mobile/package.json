@@ -4,7 +4,7 @@
   "private": true,
   "description": "Capacitor wrapper for the Party-Hitz mobile app",
   "scripts": {
-    "generate-assets": "capacitor-assets generate"
+    "generate-assets": "capacitor-assets generate --android"
   },
   "dependencies": {
     "@capacitor/android": "latest",
