@@ -455,12 +455,12 @@ export default function Home() {
   };
 
   const isSpotify = playlistSource === 'spotify';
-  const themeBgClass = isSpotify ? 'bg-[#1DB954]' : 'bg-[#FF0000]';
-  const themeHoverBgClass = isSpotify ? 'hover:bg-[#1ed760]' : 'hover:bg-[#ff3333]';
-  const themeTextClass = isSpotify ? 'text-[#1DB954]' : 'text-[#FF0000]';
-  const themeBorderClass = isSpotify ? 'border-[#1DB954]' : 'border-[#FF0000]';
-  const themeFocusRingClass = isSpotify ? 'focus:ring-[#1DB954]/20 focus:border-[#1DB954]' : 'focus:ring-[#FF0000]/20 focus:border-[#FF0000]';
-  const themeShadowClass = isSpotify ? 'shadow-[0_0_40px_rgba(29,185,84,0.4)]' : 'shadow-[0_0_40px_rgba(255,0,0,0.4)]';
+  const themeBgClass = isSpotify ? 'bg-[#FF1493]' : 'bg-[#FF1493]';
+  const themeHoverBgClass = isSpotify ? 'hover:bg-[#FF69B4]' : 'hover:bg-[#FF69B4]';
+  const themeTextClass = isSpotify ? 'text-[#FF1493]' : 'text-[#FF1493]';
+  const themeBorderClass = isSpotify ? 'border-[#FF1493]' : 'border-[#FF1493]';
+  const themeFocusRingClass = isSpotify ? 'focus:ring-[#FF1493]/20 focus:border-[#FF1493]' : 'focus:ring-[#FF1493]/20 focus:border-[#FF1493]';
+  const themeShadowClass = isSpotify ? 'shadow-[0_0_40px_rgba(255,20,147,0.4)]' : 'shadow-[0_0_40px_rgba(255,20,147,0.4)]';
 
   return (
     <main className="flex h-[100dvh] w-full flex-col items-center justify-center p-3 sm:p-8 relative overflow-hidden text-white">
