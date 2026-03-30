@@ -3,12 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "description": "Capacitor wrapper for the Party-Hitz mobile app",
+  "scripts": {
+    "generate-assets": "capacitor-assets generate"
+  },
   "dependencies": {
     "@capacitor/android": "latest",
-    "@capacitor/ios": "latest",
-    "@capacitor/core": "latest"
+    "@capacitor/core": "latest",
+    "@capacitor/ios": "latest"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "latest"
   }
 }

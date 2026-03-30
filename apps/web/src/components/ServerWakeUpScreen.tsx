@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 
-export default function ServerWakeUpScreen({ errorMsg, onSkip }: { errorMsg?: string, onSkip?: () => void }) {
+export default function ServerWakeUpScreen() {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -46,26 +46,11 @@ export default function ServerWakeUpScreen({ errorMsg, onSkip }: { errorMsg?: st
 
           <div className="flex flex-col gap-2 relative z-20">
             <h2 className="text-xl md:text-2xl font-bold text-white tracking-wide uppercase">
-              Wybudzanie serwerów imprezy...
+              Szukanie serwerów imprezy...
             </h2>
             <p className="text-gray-400 text-sm md:text-base max-w-sm px-4">
               Zastosowaliśmy darmową chmurę testową. Jeśli nikogo tu dawno nie było, <span className="text-primary font-semibold">serwer może wstać w ok. 30-50 sekund</span>. Daj mu chwilę!
             </p>
-            
-            {errorMsg && (
-              <p className="text-red-500 font-mono text-xs mt-4 max-w-sm p-3 bg-red-950/40 rounded border border-red-900/50 break-all mx-auto leading-relaxed shadow-lg">
-                Błąd Połączenia: {errorMsg}
-              </p>
-            )}
-            
-            {onSkip && (
-              <button 
-                onClick={onSkip}
-                className="mt-6 border border-gray-600/50 hover:bg-white hover:text-black text-xs uppercase font-bold tracking-widest px-6 py-3 rounded-full transition-all w-fit mx-auto cursor-pointer shadow-md"
-              >
-                Pomiń Ładowanie (Debug) ⚠️
-              </button>
-            )}
           </div>
         </div>
 

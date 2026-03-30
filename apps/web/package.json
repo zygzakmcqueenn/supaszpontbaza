@@ -7,12 +7,16 @@
     "start": "next start"
   },
   "dependencies": {
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/preferences": "^8.0.1",
+    "@party-hitz/shared": "*",
+    "framer-motion": "^11.0.8",
     "next": "14.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.6.0",
     "socket.io-client": "^4.7.4",
-    "framer-motion": "^11.0.8",
-    "@party-hitz/shared": "*"
+    "use-sound": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

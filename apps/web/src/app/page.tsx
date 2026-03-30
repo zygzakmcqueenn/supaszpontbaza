@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { io, Socket } from 'socket.io-client';
 import type { GameState, Player } from '@party-hitz/shared';
 import ServerWakeUpScreen from '../components/ServerWakeUpScreen';
+import SettingsMenu from '../components/SettingsMenu';
+import { useGameAudio } from '../hooks/useGameAudio';
+import { Toaster, toast } from 'react-hot-toast';
 
 let socket: Socket | null = null;
 
@@ -14,6 +17,7 @@ export default function Home() {
   const [view, setView] = useState<ViewState>('home');
   const [roomCode, setRoomCode] = useState<string>('');
   const [players, setPlayers] = useState<Player[]>([]);
+  const { playClickEffect, playCountdownEffect } = useGameAudio();
   
   const [inputCode, setInputCode] = useState('');
   const [inputName, setInputName] = useState('');
@@ -21,10 +25,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [socketError, setSocketError] = useState('');
-  const [forceSkipWakeUp, setForceSkipWakeUp] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [hostError, setHostError] = useState('');
   const [countdown, setCountdown] = useState(3);
+  const [showSettings, setShowSettings] = useState(false);
   
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [playlistUrl, setPlaylistUrl] = useState('');
@@ -109,6 +113,7 @@ export default function Home() {
     });
 
     socket.on('gameStartError', (data: { message: string }) => {
+      toast.error(data.message);
       setHostError(data.message);
       setIsLoading(false);
       // Jeśli grał solo nie chcemy wyrzucać go do lobby
@@ -131,18 +136,22 @@ export default function Home() {
   useEffect(() => {
     if (view === 'countdown') {
       setCountdown(3);
+      playCountdownEffect();
       const timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
+            playCountdownEffect();
             setView('playing');
             return 0;
           }
+          playCountdownEffect();
           return prev - 1;
         });
       }, 1000);
       return () => clearInterval(timer);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
   // Effect to track points evaluation after segment advance
@@ -183,6 +192,7 @@ export default function Home() {
   const handleCreateParty = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!socket || !isConnected) return;
+    playClickEffect();
     setIsLoading(true);
 
     try {
@@ -205,6 +215,7 @@ export default function Home() {
   const handleJoinParty = (e: React.FormEvent) => {
     e.preventDefault();
     if (!socket || !isConnected) return;
+    playClickEffect();
     setErrorMsg('');
     setIsLoading(true);
 
@@ -229,6 +240,11 @@ export default function Home() {
 
   const handleStartGame = () => {
     if (!socket) return;
+    if (!/^https?:\/\//i.test(playlistUrl.trim())) {
+      toast.error('Wklej prawidłowy link zaczynający się od http:// lub https://');
+      return;
+    }
+    playClickEffect();
     setHostError('');
     socket.emit('startGame', { roomId: roomCode, playlistUrl, playlistSource });
     try {
@@ -241,6 +257,11 @@ export default function Home() {
   const handleStartSoloGame = (e: React.FormEvent) => {
     e.preventDefault();
     if (!socket || !isConnected || playlistUrl.trim() === '') return;
+    if (!/^https?:\/\//i.test(playlistUrl.trim())) {
+      toast.error('Wklej prawidłowy link zaczynający się od http:// lub https://');
+      return;
+    }
+    playClickEffect();
     setIsLoading(true);
     setHostError('');
     
@@ -302,6 +323,7 @@ export default function Home() {
   const handleSubmitAnswer = (answer: { author: string; title: string } | 'SKIP') => {
     if (!socket) return;
     if (answer !== 'SKIP' && answer.author.trim() === '' && answer.title.trim() === '') return;
+    playClickEffect();
     
     // Zabezpieczenie na wypadek nadpisania odgadniętego już pola przez pusty submit
     if (answer !== 'SKIP') {
@@ -335,6 +357,7 @@ export default function Home() {
   }, [gameState?.tracks, gameState?.currentTrackIndex]);
 
   const handlePlayTrack = () => {
+    playClickEffect();
     if (!gameState?.currentSegment) return;
     const currentTrack = gameState.tracks?.[gameState.currentTrackIndex || 0];
     if (!currentTrack) return;
@@ -412,16 +435,19 @@ export default function Home() {
 
   const handleNextSegment = () => {
     if (!socket) return;
+    playClickEffect();
     socket.emit('nextSegment', { roomId: roomCode });
   };
 
   const handleNextRound = () => {
     if (!socket) return;
+    playClickEffect();
     socket.emit('nextRound', { roomId: roomCode });
   };
 
   const handleStartNextTrack = () => {
     if (!socket) return;
+    playClickEffect();
     socket.emit('startNextTrack', { roomId: roomCode });
   };
 
@@ -436,13 +462,24 @@ export default function Home() {
   return (
     <main className="flex h-[100dvh] w-full flex-col items-center justify-center p-3 sm:p-8 relative overflow-hidden text-white">
       <div id="yt-player-hidden" className="hidden"></div>
+      <Toaster position="bottom-center" toastOptions={{ style: { background: '#282828', color: '#fff', borderRadius: '1rem' } }} />
+      {showSettings && <SettingsMenu onClose={() => setShowSettings(false)} />}
+      
+      {/* Przycisk Ustawień (Zębatka) */}
+      {(view !== 'playing' && view !== 'countdown') && (
+        <button onClick={() => { playClickEffect(); setShowSettings(true); }} className="absolute top-4 right-4 sm:top-8 sm:right-8 z-50 p-2 text-gray-400 hover:text-white rounded-full bg-surface/50 border border-gray-800 backdrop-blur-md transition-all shadow-lg hover:scale-105">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      )}
+
       <AnimatePresence>
-        {(!isConnected && !forceSkipWakeUp) && (
-          <ServerWakeUpScreen 
-            errorMsg={socketError} 
-            onSkip={() => setForceSkipWakeUp(true)} 
-          />
+        {!isConnected && (
+          <ServerWakeUpScreen />
         )}
+
       </AnimatePresence>
       
       {/* Tło gradientowe */}
@@ -581,7 +618,7 @@ export default function Home() {
                 <button 
                   type="button" 
                   disabled={isLoading}
-                  onClick={() => setPlaylistSource('spotify')} 
+                  onClick={() => { playClickEffect(); setPlaylistSource('spotify'); }} 
                   className={`w-1/2 py-3 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${isSpotify ? 'text-black' : 'text-gray-400 hover:text-white'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   Spotify
@@ -589,7 +626,7 @@ export default function Home() {
                 <button 
                   type="button" 
                   disabled={isLoading}
-                  onClick={() => setPlaylistSource('youtube')} 
+                  onClick={() => { playClickEffect(); setPlaylistSource('youtube'); }} 
                   className={`w-1/2 py-3 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${!isSpotify ? 'text-white' : 'text-gray-400 hover:text-white'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   YouTube
@@ -607,6 +644,7 @@ export default function Home() {
                 {isLoading ? 'Ładowanie playlisty...' : 'Rozpocznij Grę'}
               </button>
               <button type="button" onClick={() => {
+                playClickEffect();
                 if (isLoading) { window.location.reload(); }
                 else { setView('home'); }
               }} className="text-gray-400 hover:text-white py-2 text-sm mt-4 transition-colors">Wróć</button>
@@ -648,7 +686,7 @@ export default function Home() {
                 <button 
                   type="button" 
                   disabled={isLoading}
-                  onClick={() => setPlaylistSource('spotify')} 
+                  onClick={() => { playClickEffect(); setPlaylistSource('spotify'); }} 
                   className={`w-1/2 py-2 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${isSpotify ? 'text-black' : 'text-gray-400 hover:text-white'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   Spotify
@@ -656,7 +694,7 @@ export default function Home() {
                 <button 
                   type="button" 
                   disabled={isLoading}
-                  onClick={() => setPlaylistSource('youtube')} 
+                  onClick={() => { playClickEffect(); setPlaylistSource('youtube'); }} 
                   className={`w-1/2 py-2 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${!isSpotify ? 'text-white' : 'text-gray-400 hover:text-white'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   YouTube
@@ -893,6 +931,7 @@ export default function Home() {
                         <button
                           key={`author-${i}`}
                           onClick={() => {
+                            playClickEffect();
                             setAnswerAuthor(authorOpt);
                             setGuessStep('title');
                           }}
@@ -937,7 +976,7 @@ export default function Home() {
                       {gameState.tracks[gameState.currentTrackIndex]?.titleOptions?.map((titleOpt, i) => (
                         <button
                           key={`title-${i}`}
-                          onClick={() => setAnswerTitle(titleOpt)}
+                          onClick={() => { playClickEffect(); setAnswerTitle(titleOpt); }}
                           disabled={alreadyGuessedTitle || hasSubmittedThisSegment}
                           className={`p-2 rounded-[1rem] font-bold text-xs sm:text-sm min-h-[3rem] sm:min-h-[3.5rem] flex justify-center items-center text-center transition-all border break-words shadow-sm ${
                             alreadyGuessedTitle ? (titleOpt === guessedTitleText ? 'bg-primary text-black border-primary' : 'bg-[#181818] text-gray-700 border-transparent')
