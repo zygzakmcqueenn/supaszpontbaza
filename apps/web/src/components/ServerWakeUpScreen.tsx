@@ -21,7 +21,7 @@ export default function ServerWakeUpScreen({ onOtaComplete }: { onOtaComplete?: 
         await CapacitorUpdater.notifyAppReady();
         
         const serverUrl = process.env.NEXT_PUBLIC_API_URL || `http://${window.location.hostname}:3001`;
-        const res = await fetch(`${serverUrl}/api/update/check`);
+        const res = await fetch(`${serverUrl}/api/update/check`, { cache: 'no-store' });
         if (!res.ok) throw new Error('API Sync Failed');
         const data = await res.json();
         

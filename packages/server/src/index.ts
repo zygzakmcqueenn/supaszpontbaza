@@ -50,7 +50,7 @@ app.get('/api/update/check', (req, res) => {
   
   res.json({
     version: current_version,
-    url: `${protocol}://${host}/update.zip`,
+    url: `${protocol}://${host}/update.zip?v=${current_version}`,
     required_backend_version
   });
 });
