@@ -19,14 +19,15 @@ export const useHaptics = () => {
   const lightImpact = () => {
     if (!isEnabled.current) return;
     try {
-      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+      // Explicit vibrate is more reliable on Android than ImpactStyle.Light
+      Haptics.vibrate({ duration: 20 }).catch(() => {});
     } catch (error) {}
   };
 
   const heavyImpact = () => {
     if (!isEnabled.current) return;
     try {
-      Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
+      Haptics.vibrate({ duration: 70 }).catch(() => {});
     } catch (error) {}
   };
 
