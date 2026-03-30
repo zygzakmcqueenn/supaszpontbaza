@@ -216,7 +216,6 @@ export default function Home() {
     
     socket.emit('joinRoom', { roomId: inputCode, playerName: inputName }, (res: { success: boolean, message?: string, gameState?: GameState }) => {
       if (res.success && res.gameState) {
-        if (!isLoading) return; // Ignore if user cancelled
         setRoomCode(res.gameState.roomId);
         setPlayers(res.gameState.players);
         setGameState(res.gameState);
@@ -253,7 +252,6 @@ export default function Home() {
 
     socket.emit('createRoom', { hostName: 'Gracz (Solo)' }, (res: { success: boolean, gameState: GameState, message?: string }) => {
       if (res.success && res.gameState) {
-        if (!isLoading) return; // Prevent race conditions
         setRoomCode(res.gameState.roomId);
         setPlayers(res.gameState.players);
         setGameState(res.gameState);
