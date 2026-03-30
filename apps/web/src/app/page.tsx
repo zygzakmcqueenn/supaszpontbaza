@@ -376,27 +376,27 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-[max(env(safe-area-inset-top,3.5rem),2.5rem)] left-0 right-0 w-full flex items-center justify-between px-4 z-50 pointer-events-none"
+            className={`absolute ${view === 'playing' ? 'top-[max(env(safe-area-inset-top,3.5rem),2.5rem)]' : 'top-[15vh]'} left-0 right-0 w-full flex items-center justify-between px-4 z-50 pointer-events-none`}
           >
             {/* Przycisk Home */}
             <button
               onClick={() => setShowExitModal(true)}
               className="p-3 text-gray-400 hover:text-white transition-colors pointer-events-auto"
             >
-              <svg className="w-8 h-8 md:w-10 md:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-[1.8rem] h-[1.8rem] md:w-9 md:h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
 
             {/* Logo */}
             <div className="flex-1 flex justify-center pointer-events-none">
-              <h1 className="text-[3.5rem] sm:text-8xl font-black tracking-tighter drop-shadow-md scale-y-[1.15] text-white leading-none">
+              <h1 className="text-[3.1rem] sm:text-7xl font-black tracking-tighter drop-shadow-md scale-y-[1.15] text-white leading-none">
                 Party<span className="text-primary">Hitz</span>
               </h1>
             </div>
 
             {/* Prawy przeciwciężar dla idealnego wyśrodkowania Flexboxa */}
-            <div className="w-14 h-14" />
+            <div className="w-[3.3rem] h-[3.3rem]" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -627,14 +627,14 @@ export default function Home() {
                 <div className="flex justify-center items-center gap-4 sm:gap-8 w-full mt-2 mb-2">
                   <button 
                     onClick={handlePlayTrack}
-                    className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(29,185,84,0.4)] ${isPlayingAudio ? 'bg-[#1DB954] scale-95' : 'bg-[#1DB954] hover:scale-105'}`}
+                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(29,185,84,0.4)] ${isPlayingAudio ? 'bg-[#1DB954] scale-95' : 'bg-[#1DB954] hover:scale-105'}`}
                   >
                     {isPlayingAudio ? (
-                      <svg className="w-10 h-10 sm:w-12 sm:h-12 text-black fill-current" viewBox="0 0 24 24">
+                      <svg className="w-8 h-8 sm:w-10 sm:h-10 text-black fill-current" viewBox="0 0 24 24">
                         <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
                       </svg>
                     ) : (
-                      <svg className="w-10 h-10 sm:w-12 sm:h-12 text-black fill-current ml-2" viewBox="0 0 24 24">
+                      <svg className="w-8 h-8 sm:w-10 sm:h-10 text-black fill-current ml-2" viewBox="0 0 24 24">
                         <path d="M5 3l14 9-14 9z"/>
                       </svg>
                     )}
@@ -820,17 +820,6 @@ export default function Home() {
                 )}
               </AnimatePresence>
             </div>
-            
-            {gameState.segmentResponses && gameState.currentSegment && gameState.segmentResponses[gameState.currentSegment] && gameState.segmentResponses[gameState.currentSegment][socket?.id || ''] && (
-              <p className="text-gray-400 mt-2 text-[10px] sm:text-xs font-medium">
-                {gameState.roundReadyToAdvance 
-                  ? ((players.find(p => p.id === socket?.id)?.isHost || players.length === 1) ? "Kliknij 'Następna Runda' aby zobaczyć wyniki!" : "Czekamy na Hosta...") 
-                  : (gameState.segmentReadyToAdvance 
-                    ? ((players.find(p => p.id === socket?.id)?.isHost || players.length === 1) ? "Kliknij 'Następny Segment' aby grać dalej!" : "Czekamy na Hosta, aby rozpoczął kolejny segment...") 
-                    : "Czekanie na resztę graczy...")
-                }
-              </p>
-            )}
           </motion.div>
         )}
 
