@@ -24,6 +24,7 @@ export default function Home() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [otaChecked, setOtaChecked] = useState(false);
   const [socketError, setSocketError] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [hostError, setHostError] = useState('');
@@ -73,6 +74,8 @@ export default function Home() {
   const [showExitModal, setShowExitModal] = useState(false);
 
   useEffect(() => {
+    if (!otaChecked) return;
+
     if (!socket) {
       const serverUrl = process.env.NEXT_PUBLIC_API_URL || `http://${window.location.hostname}:3001`;
       socket = io(serverUrl);
@@ -131,7 +134,7 @@ export default function Home() {
       socket?.off('gameStartError');
       socket?.off('connect_error');
     };
-  }, []);
+  }, [otaChecked]);
 
   useEffect(() => {
     if (view === 'countdown') {
@@ -476,8 +479,8 @@ export default function Home() {
       )}
 
       <AnimatePresence>
-        {!isConnected && (
-          <ServerWakeUpScreen />
+        {(!isConnected || !otaChecked) && (
+          <ServerWakeUpScreen onOtaComplete={() => setOtaChecked(true)} />
         )}
 
       </AnimatePresence>

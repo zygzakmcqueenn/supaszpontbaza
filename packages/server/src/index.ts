@@ -27,6 +27,19 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 const server = http.createServer(app);
+
+// OTA Update Endpoint
+app.get('/api/update/check', (req, res) => {
+  const current_version = "1.0.1";
+  const required_backend_version = "1.0.0";
+  
+  res.json({
+    version: current_version,
+    url: "https://github.com/party-hitz/releases/placeholder.zip",
+    required_backend_version
+  });
+});
+
 const io = new Server(server, {
   cors: corsOptions
 });
