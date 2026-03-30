@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Player, Track } from '@party-hitz/shared';
 import { getPlaylistTracks } from '../services/spotify';
+import { getYouTubePlaylistTracks } from '../services/youtube';
 
 const games = new Map<string, GameState>();
 
@@ -64,48 +65,60 @@ export const registerGameHandlers = (io: Server, socket: Socket) => {
     callback({ success: true, gameState: room });
   });
   // 4. ROZPOCZĘCIE GRY (Tylko Host)
-  socket.on('startGame', async (data: { roomId: string, playlistUrl?: string }) => {
+  socket.on('startGame', async (data: { roomId: string, playlistUrl?: string, playlistSource?: 'spotify' | 'youtube' }) => {
     const code = data.roomId.toUpperCase();
     const room = games.get(code);
 
     if (room && data.playlistUrl) {
       room.status = 'playing'; // Zmieniamy status pokoju
       room.playlistUrl = data.playlistUrl;
+      const source = data.playlistSource || 'spotify';
+      room.playlistSource = source;
       room.currentSegment = 1;
       room.roundReadyToAdvance = false;
       room.segmentReadyToAdvance = false;
       room.segmentResponses = { 1: {} };
       
       try {
-        // 1. Wydobądź ID playlisty ze Spotify URL
-        // Np: https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M?si=...
-        const playlistIdMatch = data.playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
-        if (!playlistIdMatch) {
-          io.to(code).emit('gameStartError', { message: 'Nieprawidłowy link do playlisty Spotify. Wklej poprawny URL.' });
-          io.to(code).emit('gameStateUpdated', { ...room, status: 'hostLobby' });
-          return;
-        }
-        const playlistId = playlistIdMatch[1];
+        let rawTracks: any[] = [];
 
-        // Krzyczymy do WSZYSTKICH w tym pokoju (Host i Gracze): "Ładuję..."
-        // Możemy użyć tymczasowego statusu lub po prostu czekać.
-        
-        // 2. Pobierz listę ze Spotify i gotowe MP3
-        const spotifyTracks = await getPlaylistTracks(playlistId);
-        
-        // 3. Konwertuj na format Gry (konwertujemy całą dostępną pulę ze Scrapera, do ~100)
-        const validTracks: Track[] = spotifyTracks.map(st => ({
+        if (source === 'youtube') {
+          // Pobierz YouTube ID (np: ?list=PLXXXX)
+          const urlParams = new URL(data.playlistUrl);
+          const listId = urlParams.searchParams.get('list');
+          if (!listId) {
+            io.to(code).emit('gameStartError', { message: 'Nieprawidłowy link do playlisty YouTube. Upewnij się, że link zawiera "?list=...".' });
+            io.to(code).emit('gameStateUpdated', { ...room, status: 'hostLobby' });
+            return;
+          }
+          rawTracks = await getYouTubePlaylistTracks(listId);
+        } else {
+          // Pobierz Spotify ID
+          const playlistIdMatch = data.playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
+          if (!playlistIdMatch) {
+            io.to(code).emit('gameStartError', { message: 'Nieprawidłowy link do playlisty Spotify. Wklej poprawny URL.' });
+            io.to(code).emit('gameStateUpdated', { ...room, status: 'hostLobby' });
+            return;
+          }
+          const playlistId = playlistIdMatch[1];
+          rawTracks = await getPlaylistTracks(playlistId);
+        }
+
+        // Konwertuj na format Gry (konwertujemy całą dostępną pulę ze Scrapera, do ~100)
+        const validTracks: Track[] = rawTracks.map(st => ({
           id: Math.random().toString(36).substring(2, 9),
           title: st.title,
           artist: st.author,
           coverUrl: st.coverUrl,
           previewUrl: st.previewUrl,
-          spotifyId: st.spotifyId
+          spotifyId: st.spotifyId,
+          youtubeId: st.youtubeId,
+          source: source
         }));
 
         if (validTracks.length === 0) {
-           console.error(`Nie udało się znaleźć darmowych podglądów dla żadnej z piosenek z tej playlisty!`);
-           io.to(code).emit('gameStartError', { message: 'Nie udało się dopasować żadnej piosenki z tej playlisty do darmowych próbek audio.' });
+           console.error(`Nie udało się znaleźć odpowiednich piosenek z tej playlisty!`);
+           io.to(code).emit('gameStartError', { message: 'Nie udało się dopasować żadnej piosenki (być może playlista jest pusta).' });
            io.to(code).emit('gameStateUpdated', { ...room, status: 'hostLobby' }); // Coś poszło nie tak, cofnij status
            return;
         } else {
@@ -139,8 +152,8 @@ export const registerGameHandlers = (io: Server, socket: Socket) => {
       } catch (err: any) {
         console.error("Błąd ładowania playlisty w startGame:", err);
         const errorMsg = err?.message?.includes('403') 
-          ? 'Spotify zablokowało dostęp (Błąd 403). Upewnij się, że playlista JEST PUBLICZNA, a Twoja aplikacja na Spotify Developer Dashboard ma przypisane "Web API".' 
-          : 'Wystąpił nieoczekiwany błąd podczas wczytywania playlisty ze Spotify.';
+          ? 'Zablokowano dostęp (Błąd 403). Upewnij się, że playlista jest PUBLICZNA.' 
+          : 'Wystąpił nieoczekiwany błąd podczas wczytywania playlisty.';
         io.to(code).emit('gameStartError', { message: errorMsg });
         io.to(code).emit('gameStateUpdated', { ...room, status: 'hostLobby' });
       }

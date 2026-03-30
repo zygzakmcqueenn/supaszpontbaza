@@ -13,6 +13,8 @@ export interface Track {
   previewUrl: string;
   coverUrl: string;
   spotifyId?: string;
+  youtubeId?: string;
+  source?: 'spotify' | 'youtube';
   artistOptions?: string[];
   titleOptions?: string[];
 }
@@ -27,6 +29,7 @@ export interface GameState {
   tracks: Track[];
   roundStartTime?: number;
   playlistUrl?: string;
+  playlistSource?: 'spotify' | 'youtube';
   currentSegment?: number;
   segmentReadyToAdvance?: boolean;
   roundReadyToAdvance?: boolean;

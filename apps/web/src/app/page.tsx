@@ -28,6 +28,7 @@ export default function Home() {
   
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [playlistUrl, setPlaylistUrl] = useState('');
+  const [playlistSource, setPlaylistSource] = useState<'spotify' | 'youtube'>('spotify');
   const [answerAuthor, setAnswerAuthor] = useState('');
   const [answerTitle, setAnswerTitle] = useState('');
   const [showPointsAnimation, setShowPointsAnimation] = useState<{ points: number; id: string } | null>(null);
@@ -184,7 +185,7 @@ export default function Home() {
   const handleStartGame = () => {
     if (!socket) return;
     setHostError('');
-    socket.emit('startGame', { roomId: roomCode, playlistUrl });
+    socket.emit('startGame', { roomId: roomCode, playlistUrl, playlistSource });
     try {
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(e => console.log(e));
@@ -209,7 +210,7 @@ export default function Home() {
         setRoomCode(res.gameState.roomId);
         setPlayers(res.gameState.players);
         setGameState(res.gameState);
-        socket!.emit('startGame', { roomId: res.gameState.roomId, playlistUrl });
+        socket!.emit('startGame', { roomId: res.gameState.roomId, playlistUrl, playlistSource });
       } else {
         setHostError(res.message || 'Wystąpił błąd podczas startu gry Solo.');
         setIsLoading(false);
@@ -356,6 +357,14 @@ export default function Home() {
     socket.emit('startNextTrack', { roomId: roomCode });
   };
 
+  const isSpotify = playlistSource === 'spotify';
+  const themeBgClass = isSpotify ? 'bg-[#1DB954]' : 'bg-[#FF0000]';
+  const themeHoverBgClass = isSpotify ? 'hover:bg-[#1ed760]' : 'hover:bg-[#ff3333]';
+  const themeTextClass = isSpotify ? 'text-[#1DB954]' : 'text-[#FF0000]';
+  const themeBorderClass = isSpotify ? 'border-[#1DB954]' : 'border-[#FF0000]';
+  const themeFocusRingClass = isSpotify ? 'focus:ring-[#1DB954]/20 focus:border-[#1DB954]' : 'focus:ring-[#FF0000]/20 focus:border-[#FF0000]';
+  const themeShadowClass = isSpotify ? 'shadow-[0_0_40px_rgba(29,185,84,0.4)]' : 'shadow-[0_0_40px_rgba(255,0,0,0.4)]';
+
   return (
     <main className="flex h-[100dvh] w-full flex-col items-center justify-center p-3 sm:p-8 relative overflow-hidden text-white">
       <AnimatePresence>
@@ -487,14 +496,37 @@ export default function Home() {
           <motion.div key="soloForm" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} className="z-10 w-full max-w-md bg-surface/80 backdrop-blur-xl border border-gray-800 p-10 rounded-[2.5rem] shadow-[0_0_50px_rgba(0,0,0,0.5)]">
             <h2 className="text-3xl font-bold text-white mb-6 text-center">Graj Solo</h2>
             <form onSubmit={handleStartSoloGame} className="flex flex-col gap-4">
+              
+              {/* Segmented Control */}
+              <div className="relative flex p-1 bg-black/50 rounded-full border border-gray-800 mb-2">
+                <div 
+                  className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full transition-all duration-300 ease-in-out ${themeBgClass}`}
+                  style={{ left: isSpotify ? '4px' : 'calc(50%)' }}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setPlaylistSource('spotify')} 
+                  className={`w-1/2 py-3 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${isSpotify ? 'text-black' : 'text-gray-400 hover:text-white'}`}
+                >
+                  Spotify
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setPlaylistSource('youtube')} 
+                  className={`w-1/2 py-3 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${!isSpotify ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  YouTube
+                </button>
+              </div>
+
               <div>
-                <label className="text-gray-400 text-sm mb-2 block font-medium pl-4">Link do playlisty (Spotify)</label>
-                <input type="url" value={playlistUrl} onChange={(e) => setPlaylistUrl(e.target.value)} className="w-full bg-background border border-gray-700/50 rounded-[1.5rem] px-6 py-4 text-base text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-center" placeholder="https://open.spotify.com/playlist/..." required />
+                <label className="text-gray-400 text-sm mb-2 block font-medium pl-4">Zagraj własną playlistę</label>
+                <input type="url" value={playlistUrl} onChange={(e) => setPlaylistUrl(e.target.value)} className={`w-full bg-background border border-gray-700/50 rounded-[1.5rem] px-6 py-4 text-base text-white focus:outline-none focus:ring-2 transition-all text-center ${themeFocusRingClass}`} placeholder={isSpotify ? "Skrót linku playlisty ze Spotify" : "Link do publicznej playlisty YouTube"} required />
               </div>
               
               {hostError && <p className="text-red-500 text-sm text-center font-bold px-2">{hostError}</p>}
               
-              <button type="submit" disabled={isLoading || playlistUrl.trim() === ''} className={`font-bold py-5 rounded-[1.5rem] text-lg mt-4 transition-all w-full shadow-lg border-2 ${playlistUrl.trim() !== '' ? 'bg-primary border-primary hover:bg-primaryHover text-black hover:scale-105' : 'bg-[#181818] border-gray-800 text-gray-600 cursor-not-allowed'}`}>
+              <button type="submit" disabled={isLoading || playlistUrl.trim() === ''} className={`font-bold py-5 rounded-[1.5rem] text-lg mt-4 transition-all duration-300 w-full border-2 ${playlistUrl.trim() !== '' ? `${themeBgClass} ${themeBorderClass} ${themeHoverBgClass} ${themeShadowClass} text-${isSpotify?'black':'white'} hover:scale-105` : 'bg-[#181818] border-gray-800 text-gray-600 shadow-none cursor-not-allowed'}`}>
                 {isLoading ? 'Ładowanie playlisty...' : 'Rozpocznij Grę'}
               </button>
               <button type="button" onClick={() => setView('home')} className="text-gray-400 hover:text-white py-2 text-sm mt-4 transition-colors">Wróć</button>
@@ -525,16 +557,39 @@ export default function Home() {
               <span className="text-8xl md:text-[10rem] font-black text-white tracking-widest leading-none drop-shadow-md">{roomCode}</span>
             </div>
             
-            <div className="bg-surface/50 border border-gray-800/50 w-full rounded-[2.5rem] p-8 mt-8 mb-8 backdrop-blur-md shadow-xl">
-              <h3 className="text-xl text-primary font-bold mb-4 pl-4 uppercase tracking-wider text-left">Link do playlisty (Spotify)</h3>
+            <div className={`bg-surface/50 border ${themeBorderClass} w-full rounded-[2.5rem] p-8 mt-8 mb-8 backdrop-blur-md shadow-xl transition-colors duration-500`}>
+              
+              {/* Segmented Control for hostLobby */}
+              <div className="relative flex p-1 bg-black/50 rounded-full border border-gray-800 mb-6 max-w-xs mx-auto">
+                <div 
+                  className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full transition-all duration-300 ease-in-out ${themeBgClass}`}
+                  style={{ left: isSpotify ? '4px' : 'calc(50%)' }}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setPlaylistSource('spotify')} 
+                  className={`w-1/2 py-2 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${isSpotify ? 'text-black' : 'text-gray-400 hover:text-white'}`}
+                >
+                  Spotify
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setPlaylistSource('youtube')} 
+                  className={`w-1/2 py-2 rounded-full relative z-10 font-bold text-sm transition-colors duration-300 ${!isSpotify ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  YouTube
+                </button>
+              </div>
+
+              <h3 className={`text-xl ${themeTextClass} font-bold mb-4 pl-4 uppercase tracking-wider text-left transition-colors`}>Link do playlisty</h3>
               <input 
                 type="text" 
                 value={playlistUrl} 
                 onChange={(e) => setPlaylistUrl(e.target.value)} 
-                className="w-full bg-background/80 border border-gray-700/50 rounded-full px-8 py-5 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all mb-8 shadow-inner" 
-                placeholder="https://open.spotify.com/playlist/..." 
+                className={`w-full bg-background/80 border border-gray-700/50 rounded-full px-8 py-5 text-white focus:outline-none focus:ring-2 transition-all mb-8 shadow-inner ${themeFocusRingClass}`} 
+                placeholder={isSpotify ? "https://open.spotify.com/playlist/..." : "Link do publicznej playlisty z YouTube (np. z ?list=...)"} 
               />
-              <h3 className="text-xl text-primary font-bold mb-4 pl-4 uppercase tracking-wider text-left">Podłączeni gracze ({players.filter(p => !p.isHost).length}):</h3>
+              <h3 className={`text-xl ${themeTextClass} font-bold mb-4 pl-4 uppercase tracking-wider text-left transition-colors`}>Podłączeni gracze ({players.filter(p => !p.isHost).length}):</h3>
               <div className="flex flex-wrap gap-3 justify-center min-h-[40px]">
                 <AnimatePresence mode="popLayout">
                   {players.filter(p => !p.isHost).length === 0 ? (
@@ -543,7 +598,7 @@ export default function Home() {
                     players.filter(p => !p.isHost).map((player) => (
                       <motion.span layout key={player.id} initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }} className="bg-gray-800 text-white px-4 py-2 rounded-full font-medium flex gap-2 items-center">
                         {player.name}
-                        {player.score > 0 && <span className="text-primary font-bold text-sm bg-black/30 px-2 py-0.5 rounded-full">{player.score} pkt</span>}
+                        {player.score > 0 && <span className={`${themeTextClass} font-bold text-sm bg-black/30 px-2 py-0.5 rounded-full`}>{player.score} pkt</span>}
                       </motion.span>
                     ))
                   )}
@@ -561,8 +616,8 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               onClick={handleStartGame}
               disabled={playlistUrl.trim() === ''}
-              className={`font-bold py-5 px-16 rounded-full text-2xl transition-all shadow-xl ${
-                playlistUrl.trim() !== '' ? 'bg-primary hover:bg-primaryHover text-black shadow-[0_0_40px_rgba(29,185,84,0.4)] hover:scale-105' : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              className={`font-bold py-5 px-16 rounded-full text-2xl transition-all duration-300 shadow-xl ${
+                playlistUrl.trim() !== '' ? `${themeBgClass} ${themeHoverBgClass} ${themeShadowClass} text-${isSpotify?'black':'white'} hover:scale-105` : 'bg-gray-800 text-gray-500 shadow-none cursor-not-allowed'
               }`}
             >
               ROZPOCZNIJ GRĘ!
