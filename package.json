@@ -12,6 +12,12 @@
     "dev": "npm run dev:web & npm run dev:server",
     "build:web": "npm run build --workspace=apps/web",
     "build:server": "npm run build --workspace=packages/server",
-    "start:server": "npm run start --workspace=packages/server"
+    "start:server": "npm run start --workspace=packages/server",
+    "bundle:ota": "cd apps/web/out && bestzip ../../../packages/server/public/update.zip *",
+    "build:render": "npm run build:web && npm run bundle:ota && npm run build:server",
+    "build": "npm run build:render"
+  },
+  "devDependencies": {
+    "bestzip": "^2.2.3"
   }
 }

@@ -3,8 +3,13 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { registerGameHandlers } from './sockets/gameHandler';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
+
+// Serve the static update.zip payload locally
+app.use(express.static(path.join(__dirname, '../public')));
 
 const allowedOrigins = [
   'http://localhost', 
@@ -30,12 +35,22 @@ const server = http.createServer(app);
 
 // OTA Update Endpoint
 app.get('/api/update/check', (req, res) => {
-  const current_version = "1.0.1";
+  let current_version = "1.0.0";
+  try {
+    const zipPath = path.join(__dirname, '../public/update.zip');
+    const stats = fs.statSync(zipPath);
+    current_version = `ota-${stats.mtimeMs}`;
+  } catch (err) {
+    // Fallback if missing
+  }
+
   const required_backend_version = "1.0.0";
+  const host = req.get('host');
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   
   res.json({
     version: current_version,
-    url: "https://github.com/party-hitz/releases/placeholder.zip",
+    url: `${protocol}://${host}/update.zip`,
     required_backend_version
   });
 });
